@@ -1,7 +1,7 @@
 # Ares Console
 
 > Novo mapa do projeto: leia `PROJECT_GUIDE.md` antes de mexer no backend,
-> companion Windows ou app mobile Expo.
+> companion Windows ou app mobile Flutter.
 
 ## Estado atual do Valcomp
 
@@ -9,8 +9,8 @@
 - Auth do app: email/senha pelo proprio backend em `/auth/signup`, `/auth/login`
   e `/auth/refresh`, usando Supabase Auth por baixo. OAuth Google/GitHub ficou
   fora por enquanto.
-- Mobile Android: APK gerado em `docs/downloads/valcomp-mobile.apk`.
-- Companion Windows: ZIP gerado em `docs/downloads/valcomp-companion-windows.zip`.
+- Mobile Android Flutter: APK gerado em `docs/downloads/valcomp-mobile.apk`.
+- Companion Windows: executavel unico em `docs/downloads/valcomp-companion-windows.exe`.
 - Pagina publica para GitHub Pages: `docs/index.html`.
 - O app mobile nao deve depender de `dev:mobile-user` em producao.
 
@@ -162,7 +162,7 @@ Variaveis necessarias no backend:
 
 Para o usuario ser avisado quando uma skin desejada cair na loja:
 
-1. O mobile registra o `ExpoPushToken` em `POST /notifications/devices`.
+1. O mobile registra o token FCM em `POST /notifications/devices`.
 2. O usuario adiciona a skin em `POST /valorant/skins/watchlist`.
 3. O backend checa automaticamente em `GET /valorant/store/daily`.
 4. Para checagem sem o usuario abrir o app, configure um cron externo chamando:
@@ -204,19 +204,21 @@ Para gerar o build Windows:
 .\tools\build_companion_windows.ps1
 ```
 
-O executavel fica em `dist\Valcomp Companion`.
+O executavel unico, com recursos embutidos, fica em `dist\Valcomp Companion.exe`.
 
-### Mobile Expo
+### Mobile Flutter
 
 O app mobile fica em `apps/mobile`:
 
 ```powershell
 cd apps/mobile
-npm install
-npm run android
+flutter pub get
+flutter analyze
+flutter run
 ```
 
-As telas iniciais ja cobrem loja diaria, vinculo por codigo e perfil/conta.
+As telas cobrem login/cadastro, Home, loja diaria/Mercado Noturno, estatisticas,
+vinculo, wishlist/alertas e conta.
 
 ### Fly.io
 

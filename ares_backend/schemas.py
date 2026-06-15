@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 Capability = Literal[
@@ -170,20 +170,36 @@ class ItemStatusResponse(BaseModel):
 
 
 Platform = Literal["ios", "android", "web", "unknown"]
+PushProvider = Literal["fcm", "expo"]
 
 
 class PushDeviceRegisterRequest(BaseModel):
-    expo_push_token: str = Field(min_length=20, max_length=256)
+    push_token: str = Field(default="", max_length=4096)
+    expo_push_token: str = Field(default="", max_length=4096)
+    provider: PushProvider = "fcm"
     platform: Platform = "unknown"
     device_name: str = Field(default="", max_length=120)
     app_version: str = Field(default="", max_length=40)
     enabled: bool = True
 
+    @model_validator(mode="after")
+    def validate_token(self) -> "PushDeviceRegisterRequest":
+        legacy_token = self.expo_push_token.strip()
+        modern_token = self.push_token.strip()
+        token = modern_token or legacy_token
+        if len(token) < 20:
+            raise ValueError("Push token must contain at least 20 characters.")
+        self.push_token = token
+        if legacy_token and not modern_token:
+            self.provider = "expo"
+        return self
+
 
 class PushDevice(BaseModel):
     device_id: str
     user_id: str
-    expo_push_token: str = ""
+    push_token: str = ""
+    provider: PushProvider = "fcm"
     masked_token: str = ""
     platform: Platform = "unknown"
     device_name: str = ""

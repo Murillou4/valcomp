@@ -69,7 +69,7 @@ class StoreService:
         )
 
     async def _enriched_item(self, item_id: str, price: int | None, source: str) -> StoreItem:
-        _, asset = await self.assets.get_item(item_id, self.repo)
+        _, asset = await self.assets.resolve_store_item(item_id, self.repo)
         return StoreItem(
             item_id=item_id,
             item_type_id=SKIN_ITEM_TYPE_ID,

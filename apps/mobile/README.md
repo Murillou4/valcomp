@@ -1,56 +1,52 @@
 # Valcomp Mobile
 
-App Expo/React Native do Valcomp. Esta pasta nasceu com:
+Aplicativo Android em Flutter para consultar dados reais do backend Valcomp:
+
+- login e cadastro por e-mail/senha;
+- vinculo Riot pelo Valcomp Companion;
+- loja diaria e Mercado Noturno;
+- rank, RR e historico disponivel;
+- wishlist de skins e alertas push via Firebase Cloud Messaging.
+
+## Desenvolvimento
 
 ```powershell
-npx create-expo-app@latest apps/mobile --template default@sdk-56 --no-install --no-agents-md --yes
+flutter pub get
+flutter analyze
+flutter test
+flutter run
 ```
 
-## Rodar
+O backend padrao e `https://valcomp-api-cda2.fly.dev`. Para outro ambiente:
 
 ```powershell
-cd apps/mobile
-npm install
-npm run android
+flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Para web:
+## Push Android
+
+O app so inicializa o Firebase quando todos os valores forem fornecidos:
 
 ```powershell
-npm run web
+flutter build apk --release `
+  --dart-define=FIREBASE_API_KEY=... `
+  --dart-define=FIREBASE_APP_ID=... `
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID=... `
+  --dart-define=FIREBASE_PROJECT_ID=...
 ```
 
-## Ambiente
+Sem esses valores, o restante do app funciona normalmente, mas o dispositivo
+nao registra um token FCM.
 
-Copie `.env.example` para `.env.local` durante desenvolvimento:
+## Build de release
+
+A chave local fica fora do Git:
+
+- keystore: `E:\DevSecrets\valcomp-upload.jks`
+- recuperacao: `E:\DevSecrets\valcomp-upload-key.txt`
+- configuracao ignorada: `android/key.properties`
 
 ```powershell
-Copy-Item .env.example .env.local
+$env:GRADLE_USER_HOME = "E:\DevCaches\gradle"
+flutter build apk --release
 ```
-
-Variaveis principais:
-
-- `EXPO_PUBLIC_API_BASE_URL`: URL do FastAPI.
-- `EXPO_PUBLIC_DEV_AUTH_TOKEN`: token dev no formato `dev:mobile-user`.
-- `EXPO_PUBLIC_EAS_PROJECT_ID`: project id do EAS, usado para gerar ExpoPushToken.
-- `EXPO_PUBLIC_SUPABASE_URL`: projeto Supabase.
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY`: anon key do app mobile.
-
-## Telas iniciais
-
-- `src/app/index.tsx`: loja diaria, rota mais importante do app.
-- `src/app/link.tsx`: gera codigo one-time para o Valcomp Companion no Windows.
-- `src/app/account.tsx`: perfil do app e conta Riot vinculada.
-
-## Notificacoes
-
-`src/lib/push.ts` usa `expo-notifications` para pedir permissao, gerar
-`ExpoPushToken` e registrar o dispositivo em `POST /notifications/devices`.
-Para funcionar em aparelho real, configure `EXPO_PUBLIC_EAS_PROJECT_ID` e as
-credenciais de push do projeto Expo/EAS.
-
-## Regra de arquitetura
-
-Enquanto o Supabase Auth mobile nao estiver implementado, chamadas usam o token dev
-centralizado em `src/lib/api.ts`. Quando o login real entrar, altere ali para
-usar o JWT Supabase da sessao atual.

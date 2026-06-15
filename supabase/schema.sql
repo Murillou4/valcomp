@@ -67,7 +67,9 @@ create table if not exists public.item_cache (
 create table if not exists public.push_devices (
   device_id text primary key,
   user_id uuid not null,
-  expo_push_token text not null,
+  push_token text not null,
+  provider text not null default 'fcm',
+  expo_push_token text,
   masked_token text not null default '',
   platform text not null default 'unknown',
   device_name text not null default '',
@@ -76,6 +78,15 @@ create table if not exists public.push_devices (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.push_devices add column if not exists push_token text;
+alter table public.push_devices add column if not exists provider text not null default 'fcm';
+alter table public.push_devices add column if not exists expo_push_token text;
+update public.push_devices
+set push_token = coalesce(nullif(push_token, ''), expo_push_token)
+where push_token is null or push_token = '';
+alter table public.push_devices alter column expo_push_token drop not null;
+alter table public.push_devices alter column push_token set not null;
 
 create table if not exists public.skin_watches (
   user_id uuid not null,
