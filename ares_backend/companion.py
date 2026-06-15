@@ -12,7 +12,7 @@ import httpx
 from ares_console.session import RiotSessionDiscovery
 
 
-DEFAULT_BACKEND_URL = "http://127.0.0.1:8000"
+DEFAULT_BACKEND_URL = "https://valcomp-api-cda2.fly.dev"
 
 
 def read_riot_ssid(local_app_data: Path | None = None) -> str:
@@ -63,7 +63,7 @@ def submit_link(backend_url: str, link_code: str, riot_payload: dict[str, Any]) 
             detail = response.json()
         except Exception:
             detail = response.text
-        raise RuntimeError(f"Backend respondeu HTTP {response.status_code}: {detail}")
+        raise RuntimeError(f"Servidor Valcomp respondeu HTTP {response.status_code}: {detail}")
     return response.json()
 
 
@@ -74,12 +74,12 @@ def complete_link(backend_url: str, link_code: str) -> dict[str, Any]:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="ares-companion",
-        description="Vincula a sessao Riot local a um usuario autenticado no backend Ares.",
+        description="Vincula a sessao Riot local ao app Valcomp.",
     )
     parser.add_argument(
         "--backend-url",
         default=os.environ.get("ARES_API_BASE_URL", DEFAULT_BACKEND_URL),
-        help="URL base do backend FastAPI.",
+        help="URL base do servidor Valcomp.",
     )
     parser.add_argument("--code", default="", help="Codigo de vinculo gerado pelo app mobile.")
     return parser.parse_args(argv)

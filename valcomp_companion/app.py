@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QPushButton,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -56,112 +55,134 @@ class ValcompCompanionWindow(QMainWindow):
         self._riot_payload: dict[str, Any] | None = None
         self._detect_thread: DetectThread | None = None
         self._link_thread: LinkThread | None = None
+        self._syncing_code = False
 
         self.setWindowTitle("Valcomp Companion")
-        self.setMinimumSize(760, 520)
+        self.setMinimumSize(480, 620)
+        self.resize(520, 680)
         self.setObjectName("RootWindow")
 
         root = QWidget()
         root.setObjectName("Root")
         self.setCentralWidget(root)
-        page = QHBoxLayout(root)
-        page.setContentsMargins(28, 28, 28, 28)
-        page.setSpacing(22)
-
-        visual = QFrame()
-        visual.setObjectName("VisualPanel")
-        visual.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        visual_layout = QVBoxLayout(visual)
-        visual_layout.setContentsMargins(28, 28, 28, 28)
-        visual_layout.setSpacing(18)
-
-        self.logo = QLabel()
-        self.logo.setPixmap(load_asset_pixmap("logo.png").scaledToWidth(150, Qt.TransformationMode.SmoothTransformation))
-        visual_layout.addWidget(self.logo, 0, Qt.AlignmentFlag.AlignLeft)
-
-        visual_layout.addStretch(1)
-        gun = QLabel()
-        gun.setObjectName("GunPreview")
-        gun.setPixmap(load_asset_pixmap("store-gun.png").scaled(360, 128, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation))
-        gun.setMinimumHeight(128)
-        gun.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        visual_layout.addWidget(gun)
-
-        headline = QLabel("Conecte sua conta Riot ao Valcomp")
-        headline.setObjectName("HeroTitle")
-        headline.setWordWrap(True)
-        visual_layout.addWidget(headline)
-
-        copy = QLabel(
-            "O app detecta o Riot Client aberto neste PC, pega a sessao local e envia "
-            "para o backend usando o codigo unico do mobile."
-        )
-        copy.setObjectName("HeroCopy")
-        copy.setWordWrap(True)
-        visual_layout.addWidget(copy)
-        visual_layout.addStretch(1)
+        page = QVBoxLayout(root)
+        page.setContentsMargins(18, 18, 18, 18)
+        page.setSpacing(0)
 
         form = QFrame()
         form.setObjectName("FormPanel")
         form_layout = QVBoxLayout(form)
-        form_layout.setContentsMargins(28, 28, 28, 28)
-        form_layout.setSpacing(16)
+        form_layout.setContentsMargins(26, 24, 26, 24)
+        form_layout.setSpacing(14)
 
         label = QLabel("Valcomp Companion")
         label.setObjectName("Eyebrow")
         form_layout.addWidget(label)
 
-        title = QLabel("Vinculo rapido")
+        self.logo = QLabel()
+        self.logo.setPixmap(
+            load_asset_pixmap("logo.png").scaledToWidth(
+                142, Qt.TransformationMode.SmoothTransformation
+            )
+        )
+        form_layout.addWidget(self.logo, 0, Qt.AlignmentFlag.AlignLeft)
+
+        title = QLabel("Vincular sua conta Riot")
         title.setObjectName("PanelTitle")
         form_layout.addWidget(title)
 
         description = QLabel(
-            "Abra o VALORANT/Riot Client, gere o codigo no app mobile e cole aqui. "
-            "Depois disso voce pode fechar esta janela."
+            "Use esta janela uma vez no computador onde voce ja joga VALORANT. "
+            "Ela conecta sua sessao Riot ao app Valcomp do celular."
         )
         description.setObjectName("Body")
         description.setWordWrap(True)
         form_layout.addWidget(description)
+
+        steps = QFrame()
+        steps.setObjectName("StepsPanel")
+        steps_layout = QVBoxLayout(steps)
+        steps_layout.setContentsMargins(14, 14, 14, 14)
+        steps_layout.setSpacing(10)
+        steps_layout.addWidget(
+            step_row(
+                "1",
+                "Abra o Riot Client ou o VALORANT",
+                "Entre na sua conta Riot neste PC e deixe o cliente aberto.",
+            )
+        )
+        steps_layout.addWidget(
+            step_row(
+                "2",
+                "No celular, toque em Vincular",
+                "Gere um codigo de 6 numeros no app Valcomp.",
+            )
+        )
+        steps_layout.addWidget(
+            step_row(
+                "3",
+                "Cole o codigo aqui",
+                "Clique em vincular e espere a confirmacao.",
+            )
+        )
+        form_layout.addWidget(steps)
 
         self.status = QLabel("Detectando sessao Riot...")
         self.status.setObjectName("StatusNeutral")
         self.status.setWordWrap(True)
         form_layout.addWidget(self.status)
 
-        self.backend_input = QLineEdit(DEFAULT_BACKEND_URL)
-        self.backend_input.setObjectName("Input")
-        self.backend_input.setPlaceholderText("https://seu-backend.fly.dev")
-        form_layout.addWidget(field_block("Backend", self.backend_input))
-
         self.code_input = QLineEdit()
         self.code_input.setObjectName("CodeInput")
-        self.code_input.setInputMask("999999")
+        self.code_input.setMaxLength(6)
         self.code_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.code_input.setPlaceholderText("000000")
+        self.code_input.setPlaceholderText("123456")
+        self.code_input.textChanged.connect(self._sanitize_code)
         self.code_input.textChanged.connect(self._sync_buttons)
-        form_layout.addWidget(field_block("Codigo do app mobile", self.code_input))
+        form_layout.addWidget(
+            field_block(
+                "Codigo que apareceu no app",
+                self.code_input,
+                "No celular: aba Vincular > Gerar codigo de vinculo.",
+            )
+        )
 
         buttons = QHBoxLayout()
         buttons.setSpacing(10)
-        self.detect_button = QPushButton("Detectar de novo")
+        self.detect_button = QPushButton("Detectar Riot")
         self.detect_button.setObjectName("SecondaryButton")
         self.detect_button.clicked.connect(self.detect_session)
         buttons.addWidget(self.detect_button)
 
-        self.link_button = QPushButton("Vincular agora")
+        self.link_button = QPushButton("Vincular minha conta")
         self.link_button.setObjectName("PrimaryButton")
         self.link_button.clicked.connect(self.link_account)
         buttons.addWidget(self.link_button)
         form_layout.addLayout(buttons)
 
-        hint = QLabel("Nenhum token ou cookie e mostrado na tela ou salvo pelo companion.")
+        self.advanced_button = QPushButton("Mostrar configuracao avancada")
+        self.advanced_button.setObjectName("LinkButton")
+        self.advanced_button.clicked.connect(self._toggle_advanced)
+        form_layout.addWidget(self.advanced_button, 0, Qt.AlignmentFlag.AlignLeft)
+
+        self.backend_input = QLineEdit(DEFAULT_BACKEND_URL)
+        self.backend_input.setObjectName("Input")
+        self.backend_input.setPlaceholderText("https://valcomp-api-cda2.fly.dev")
+        self.backend_wrapper = field_block(
+            "Servidor Valcomp",
+            self.backend_input,
+            "Nao altere este campo, a menos que esteja testando uma versao propria.",
+        )
+        self.backend_wrapper.hide()
+        form_layout.addWidget(self.backend_wrapper)
+
+        hint = QLabel(
+            "Seguro: nenhum token, cookie ou senha Riot aparece na tela ou fica salvo neste app."
+        )
         hint.setObjectName("Hint")
         hint.setWordWrap(True)
         form_layout.addWidget(hint)
-        form_layout.addStretch(1)
-
-        page.addWidget(visual, 1)
-        page.addWidget(form, 1)
+        page.addWidget(form)
 
         self.setStyleSheet(STYLESHEET)
         self._sync_buttons()
@@ -171,7 +192,7 @@ class ValcompCompanionWindow(QMainWindow):
         if self._detect_thread and self._detect_thread.isRunning():
             return
         self._riot_payload = None
-        self.status.setText("Detectando Riot Client e sessao local...")
+        self.status.setText("Procurando Riot Client aberto neste PC...")
         self.status.setObjectName("StatusNeutral")
         self.status.style().unpolish(self.status)
         self.status.style().polish(self.status)
@@ -189,8 +210,11 @@ class ValcompCompanionWindow(QMainWindow):
         region = str(payload.get("region") or "?").upper()
         shard = str(payload.get("shard") or "?").upper()
         has_ssid = bool(payload.get("ssid"))
-        suffix = "SSID ok" if has_ssid else "SSID nao encontrado"
-        self.status.setText(f"Sessao detectada: {mask_puuid(puuid)} | {region}/{shard} | {suffix}.")
+        suffix = "pronta para vincular" if has_ssid else "detectada, mas pode pedir novo login"
+        self.status.setText(
+            f"Conta Riot encontrada: {mask_puuid(puuid)} | {region}/{shard}. "
+            f"Sessao {suffix}."
+        )
         self.status.setObjectName("StatusSuccess" if has_ssid else "StatusWarning")
         self.status.style().unpolish(self.status)
         self.status.style().polish(self.status)
@@ -198,9 +222,10 @@ class ValcompCompanionWindow(QMainWindow):
 
     def _on_detect_failed(self, message: str) -> None:
         self.status.setText(
-            "Nao consegui detectar a sessao. Abra o Riot Client e o VALORANT, "
-            f"depois tente de novo. Detalhe: {message}"
+            "Nao encontrei sua sessao Riot. Abra o Riot Client ou VALORANT, confirme "
+            "que esta logado e clique em Detectar Riot novamente."
         )
+        self.status.setToolTip(message)
         self.status.setObjectName("StatusWarning")
         self.status.style().unpolish(self.status)
         self.status.style().polish(self.status)
@@ -212,14 +237,14 @@ class ValcompCompanionWindow(QMainWindow):
             return
         code = self.code_input.text().strip()
         if len(code) != 6:
-            self.status.setText("Cole o codigo de 6 digitos que apareceu no app mobile.")
+            self.status.setText("Digite os 6 numeros que apareceram no app Valcomp do celular.")
             self.status.setObjectName("StatusWarning")
             self.status.style().unpolish(self.status)
             self.status.style().polish(self.status)
             return
         self.link_button.setEnabled(False)
         self.detect_button.setEnabled(False)
-        self.status.setText("Enviando vinculo para o backend...")
+        self.status.setText("Conectando sua conta Riot ao Valcomp...")
         self.status.setObjectName("StatusNeutral")
         self.status.style().unpolish(self.status)
         self.status.style().polish(self.status)
@@ -239,7 +264,11 @@ class ValcompCompanionWindow(QMainWindow):
         self.status.style().polish(self.status)
 
     def _on_link_failed(self, message: str) -> None:
-        self.status.setText(f"Falha ao vincular: {message}")
+        self.status.setText(
+            "Nao foi possivel vincular. Gere um novo codigo no app e tente de novo. "
+            "Se continuar, confira sua internet."
+        )
+        self.status.setToolTip(message)
         self.status.setObjectName("StatusWarning")
         self.status.style().unpolish(self.status)
         self.status.style().polish(self.status)
@@ -250,16 +279,67 @@ class ValcompCompanionWindow(QMainWindow):
         if not (self._detect_thread and self._detect_thread.isRunning()):
             self.detect_button.setEnabled(True)
 
+    def _sanitize_code(self, value: str) -> None:
+        if self._syncing_code:
+            return
+        clean = "".join(ch for ch in value if ch.isdigit())[:6]
+        if clean == value:
+            return
+        self._syncing_code = True
+        self.code_input.setText(clean)
+        self._syncing_code = False
 
-def field_block(title: str, widget: QWidget) -> QWidget:
+    def _toggle_advanced(self) -> None:
+        visible = not self.backend_wrapper.isVisible()
+        self.backend_wrapper.setVisible(visible)
+        self.advanced_button.setText(
+            "Ocultar configuracao avancada"
+            if visible
+            else "Mostrar configuracao avancada"
+        )
+
+
+def step_row(number: str, title: str, body: str) -> QWidget:
+    wrapper = QWidget()
+    layout = QHBoxLayout(wrapper)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(10)
+
+    badge = QLabel(number)
+    badge.setObjectName("StepBadge")
+    badge.setFixedSize(28, 28)
+    badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignTop)
+
+    text = QWidget()
+    text_layout = QVBoxLayout(text)
+    text_layout.setContentsMargins(0, 0, 0, 0)
+    text_layout.setSpacing(2)
+    title_label = QLabel(title)
+    title_label.setObjectName("StepTitle")
+    body_label = QLabel(body)
+    body_label.setObjectName("StepBody")
+    body_label.setWordWrap(True)
+    text_layout.addWidget(title_label)
+    text_layout.addWidget(body_label)
+    layout.addWidget(text, 1)
+    return wrapper
+
+
+def field_block(title: str, widget: QWidget, helper: str = "") -> QWidget:
     wrapper = QWidget()
     layout = QVBoxLayout(wrapper)
     layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(7)
+    layout.setSpacing(6)
     label = QLabel(title)
     label.setObjectName("FieldLabel")
     layout.addWidget(label)
     layout.addWidget(widget)
+    if helper:
+        helper_label = QLabel(helper)
+        helper_label.setObjectName("FieldHelper")
+        helper_label.setWordWrap(True)
+        layout.addWidget(helper_label)
     return wrapper
 
 
@@ -280,23 +360,17 @@ QMainWindow#RootWindow, QWidget#Root {
     color: #F8F1FF;
     font-family: "Segoe UI", "Arial";
 }
-QFrame#VisualPanel {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #211338, stop:0.54 #100D1A, stop:1 #321723);
-    border: 1px solid #3C2B55;
-    border-radius: 30px;
-}
 QFrame#FormPanel {
     background: #171221;
     border: 1px solid #38264D;
-    border-radius: 30px;
+    border-radius: 28px;
 }
-QLabel#HeroTitle {
-    color: #F8F1FF;
-    font-size: 34px;
-    line-height: 38px;
-    font-weight: 800;
+QFrame#StepsPanel {
+    background: #100D18;
+    border: 1px solid #2F2142;
+    border-radius: 18px;
 }
-QLabel#HeroCopy, QLabel#Body, QLabel#Hint {
+QLabel#Body, QLabel#Hint, QLabel#FieldHelper, QLabel#StepBody {
     color: #B8A9C8;
     font-size: 14px;
     line-height: 20px;
@@ -310,13 +384,25 @@ QLabel#Eyebrow {
 }
 QLabel#PanelTitle {
     color: #F8F1FF;
-    font-size: 30px;
+    font-size: 29px;
     font-weight: 800;
 }
 QLabel#FieldLabel {
     color: #F8F1FF;
     font-size: 13px;
     font-weight: 700;
+}
+QLabel#StepBadge {
+    color: #0B0911;
+    background: #FF4655;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 900;
+}
+QLabel#StepTitle {
+    color: #F8F1FF;
+    font-size: 14px;
+    font-weight: 800;
 }
 QLabel#StatusNeutral, QLabel#StatusSuccess, QLabel#StatusWarning {
     border-radius: 16px;
@@ -350,11 +436,11 @@ QLineEdit#Input:focus, QLineEdit#CodeInput:focus {
     border: 1px solid #FF4655;
 }
 QLineEdit#CodeInput {
-    font-size: 30px;
+    font-size: 28px;
     font-weight: 900;
-    letter-spacing: 10px;
+    letter-spacing: 8px;
 }
-QPushButton#PrimaryButton, QPushButton#SecondaryButton {
+QPushButton#PrimaryButton, QPushButton#SecondaryButton, QPushButton#LinkButton {
     border: 0;
     border-radius: 16px;
     min-height: 48px;
@@ -368,6 +454,13 @@ QPushButton#PrimaryButton {
 QPushButton#SecondaryButton {
     background: #251A33;
     color: #F8F1FF;
+}
+QPushButton#LinkButton {
+    background: transparent;
+    color: #B8A9C8;
+    min-height: 28px;
+    padding: 0;
+    text-align: left;
 }
 QPushButton#PrimaryButton:pressed, QPushButton#SecondaryButton:pressed {
     padding-top: 2px;
@@ -389,4 +482,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
