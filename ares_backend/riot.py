@@ -7,6 +7,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import httpx
+import jwt
 
 from ares_console.models import RiotContext
 
@@ -75,7 +76,12 @@ class RiotAuthService:
         if not record:
             raise RelinkRequiredError("Riot account is not linked.")
         payload = RiotCredentialPayload(**self.crypto.decrypt_json(record.encrypted_payload))
-        if payload.access_token and payload.entitlement_token and payload.puuid:
+        if (
+            payload.access_token
+            and payload.entitlement_token
+            and payload.puuid
+            and not access_token_needs_refresh(payload.access_token)
+        ):
             return self._session_from_payload(payload)
         refreshed = await self.refresh_payload(payload)
         await self._save_refreshed(user_id, repo, refreshed)
@@ -232,8 +238,11 @@ class RiotRemoteClient:
             json=json_body,
             params=params,
         )
-        if response.status_code in {401, 403}:
-            raise RelinkRequiredError("Riot token was rejected; relink required.")
+        error_code = riot_error_code(response)
+        if response.status_code in {401, 403} or error_code == "BAD_CLAIMS":
+            raise RelinkRequiredError(
+                "Sua sessão Riot expirou. Abra o companion no PC para vincular novamente."
+            )
         if not response.is_success:
             raise RiotRequestError(
                 f"Riot returned HTTP {response.status_code}.",
@@ -255,7 +264,7 @@ class RiotRemoteClient:
                 data["_source_version"] = "v3"
                 return data
         except RiotRequestError as exc:
-            if exc.riot_status not in {404, 405}:
+            if exc.riot_status not in {400, 404, 405}:
                 raise
         v2_url = f"{base}/store/v2/storefront/{session.puuid}"
         data = await self.request_json("GET", v2_url, session, allow_empty=True)
@@ -286,7 +295,6 @@ class RiotRemoteClient:
             session,
             allow_empty=True,
         )
-
     async def account_xp(self, session: RiotSession) -> dict[str, Any]:
         return await self.request_json(
             "GET",
@@ -313,6 +321,15 @@ class RiotRemoteClient:
             f"https://pd.{session.shard}.a.pvp.net/match-history/v1/history/{session.puuid}",
             session,
             params={"startIndex": start_index, "endIndex": end_index},
+        )
+
+    async def match_details(
+        self, session: RiotSession, match_id: str
+    ) -> dict[str, Any]:
+        return await self.request_json(
+            "GET",
+            f"https://pd.{session.shard}.a.pvp.net/match-details/v1/matches/{match_id}",
+            session,
         )
 
     async def loadout(self, session: RiotSession) -> dict[str, Any]:
@@ -344,3 +361,39 @@ class RiotRemoteClient:
             session,
             allow_empty=True,
         )
+
+
+def access_token_needs_refresh(token: str, *, leeway_seconds: int = 60) -> bool:
+    try:
+        claims = jwt.decode(
+            token,
+            options={
+                "verify_signature": False,
+                "verify_exp": False,
+                "verify_aud": False,
+            },
+            algorithms=["RS256", "HS256"],
+        )
+    except jwt.PyJWTError:
+        return False
+    expires_at = claims.get("exp")
+    if not isinstance(expires_at, (int, float)):
+        return False
+    return float(expires_at) <= datetime.now(UTC).timestamp() + leeway_seconds
+
+
+def riot_error_code(response: httpx.Response) -> str:
+    if not response.content:
+        return ""
+    try:
+        payload = response.json()
+    except json.JSONDecodeError:
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    return str(
+        payload.get("errorCode")
+        or payload.get("error_code")
+        or payload.get("code")
+        or ""
+    ).upper()

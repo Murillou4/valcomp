@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_controller.dart';
+import 'core/diagnostic_log.dart';
 import 'core/push_service.dart';
 import 'core/theme.dart';
 import 'screens/app_shell.dart';
@@ -11,6 +15,33 @@ import 'screens/auth_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await DiagnosticLog.instance.initialize();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    unawaited(
+      DiagnosticLog.instance.record(
+        level: 'critical',
+        category: 'flutter_error',
+        message: details.exceptionAsString(),
+        stackTrace: details.stack?.toString() ?? '',
+        context: {
+          'library': details.library ?? '',
+          'context': '${details.context ?? ''}',
+        },
+      ),
+    );
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    unawaited(
+      DiagnosticLog.instance.record(
+        level: 'critical',
+        category: 'platform_error',
+        message: error.toString(),
+        stackTrace: stack.toString(),
+      ),
+    );
+    return true;
+  };
   await initializeDateFormatting('pt_BR');
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await PushService.initializeFirebase();

@@ -1,16 +1,40 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'diagnostic_log.dart';
+
 class ApiException implements Exception {
-  const ApiException(this.message, {this.code = '', this.statusCode = 0});
+  const ApiException(
+    this.message, {
+    this.code = '',
+    this.statusCode = 0,
+    this.requestId = '',
+    this.method = '',
+    this.path = '',
+  });
 
   final String message;
   final String code;
   final int statusCode;
+  final String requestId;
+  final String method;
+  final String path;
 
   bool get relinkRequired => code == 'relink_required';
+  String get userMessage =>
+      requestId.isEmpty ? message : '$message\nReferência: $requestId';
+  String get fullDetails => const JsonEncoder.withIndent('  ').convert({
+    'message': message,
+    'code': code,
+    'status_code': statusCode,
+    'request_id': requestId,
+    'method': method,
+    'path': path,
+  });
 
   @override
   String toString() => message;
@@ -128,18 +152,74 @@ class ApiClient {
     bool retry = true,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
-    final headers = <String, String>{'Accept': 'application/json'};
+    final requestId = DiagnosticLog.instance.newEventId();
+    final stopwatch = Stopwatch()..start();
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'X-Request-ID': requestId,
+      'X-Valcomp-Client': 'mobile/${DiagnosticLog.instance.appVersion}',
+    };
     if (body != null) headers['Content-Type'] = 'application/json';
     if (authenticated && _accessToken.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_accessToken';
     }
     final encoded = body == null ? null : jsonEncode(body);
-    final response = switch (method) {
-      'POST' => await _client.post(uri, headers: headers, body: encoded),
-      'PATCH' => await _client.patch(uri, headers: headers, body: encoded),
-      'DELETE' => await _client.delete(uri, headers: headers),
-      _ => await _client.get(uri, headers: headers),
-    };
+    unawaited(
+      DiagnosticLog.instance.record(
+        level: 'debug',
+        category: 'api_request',
+        message: '$method $path',
+        requestId: requestId,
+      ),
+    );
+    late final http.Response response;
+    try {
+      response = switch (method) {
+        'POST' => await _client.post(uri, headers: headers, body: encoded),
+        'PATCH' => await _client.patch(uri, headers: headers, body: encoded),
+        'DELETE' => await _client.delete(uri, headers: headers),
+        _ => await _client.get(uri, headers: headers),
+      };
+    } on Object catch (error, stack) {
+      stopwatch.stop();
+      final exception = ApiException(
+        error is SocketException || error is TimeoutException
+            ? 'Não foi possível conectar ao Valcomp. Verifique sua internet e tente novamente.'
+            : 'A conexão falhou antes de receber uma resposta.',
+        code: 'network_error',
+        requestId: requestId,
+        method: method,
+        path: path,
+      );
+      unawaited(
+        DiagnosticLog.instance.record(
+          level: 'error',
+          category: 'api_network_error',
+          message: error.toString(),
+          stackTrace: stack.toString(),
+          requestId: requestId,
+          context: {
+            'method': method,
+            'path': path,
+            'elapsed_ms': stopwatch.elapsedMilliseconds,
+          },
+        ),
+      );
+      throw exception;
+    }
+    stopwatch.stop();
+    unawaited(
+      DiagnosticLog.instance.record(
+        level: response.statusCode >= 400 ? 'warning' : 'debug',
+        category: 'api_response',
+        message: '$method $path -> ${response.statusCode}',
+        requestId: requestId,
+        context: {
+          'status_code': response.statusCode,
+          'elapsed_ms': stopwatch.elapsedMilliseconds,
+        },
+      ),
+    );
     if (response.statusCode == 401 &&
         authenticated &&
         retry &&
@@ -164,15 +244,64 @@ class ApiClient {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final detail = payload['error'] ?? payload['detail'];
       final error = _asMap(detail);
-      throw ApiException(
+      final exception = ApiException(
         error['message']?.toString() ??
             payload['message']?.toString() ??
             'Não foi possível concluir esta ação.',
         code: error['code']?.toString() ?? '',
         statusCode: response.statusCode,
+        requestId:
+            error['request_id']?.toString() ??
+            response.headers['x-request-id'] ??
+            requestId,
+        method: method,
+        path: path,
       );
+      unawaited(_uploadDiagnostic(exception));
+      throw exception;
     }
     return payload;
+  }
+
+  Future<void> _uploadDiagnostic(ApiException exception) async {
+    if (_accessToken.isEmpty || exception.path.startsWith('/diagnostics/')) {
+      return;
+    }
+    try {
+      await _client
+          .post(
+            Uri.parse('$baseUrl/diagnostics/events'),
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_accessToken',
+              'X-Request-ID': exception.requestId,
+              'X-Valcomp-Client': 'mobile/${DiagnosticLog.instance.appVersion}',
+            },
+            body: jsonEncode({
+              'event_id': DiagnosticLog.instance.newEventId(),
+              'source': 'mobile',
+              'level': exception.statusCode >= 500 ? 'error' : 'warning',
+              'category': exception.code.isEmpty ? 'api_error' : exception.code,
+              'message': exception.message,
+              'context': {
+                'method': exception.method,
+                'path': exception.path,
+                'status_code': exception.statusCode,
+              },
+              'request_id': exception.requestId,
+              'app_version': DiagnosticLog.instance.appVersion,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
+    } on Object catch (error) {
+      await DiagnosticLog.instance.record(
+        level: 'warning',
+        category: 'diagnostic_upload_failed',
+        message: error.toString(),
+        requestId: exception.requestId,
+      );
+    }
   }
 }
 

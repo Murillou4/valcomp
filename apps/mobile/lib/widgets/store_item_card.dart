@@ -92,6 +92,30 @@ class StoreItemCard extends StatelessWidget {
                       errorWidget: (_, __, ___) => const SizedBox.shrink(),
                     ),
                   ),
+                if (item.source == 'night_market' &&
+                    item.discountPercent != null)
+                  Positioned(
+                    left: 16,
+                    top: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ValcompColors.red,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '-${item.discountPercent}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   left: 22,
                   right: 128,
@@ -123,6 +147,7 @@ class StoreItemCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Image.asset(
                             'assets/images/vp-symbol.png',
@@ -130,12 +155,28 @@ class StoreItemCard extends StatelessWidget {
                             height: 16,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            '${item.price}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (item.originalPrice != null &&
+                                  item.originalPrice != item.price)
+                                Text(
+                                  '${item.originalPrice}',
+                                  style: const TextStyle(
+                                    color: ValcompColors.muted,
+                                    fontSize: 10,
+                                    height: 1,
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                ),
+                              Text(
+                                '${item.price}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

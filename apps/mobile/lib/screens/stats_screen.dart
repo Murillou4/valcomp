@@ -7,6 +7,7 @@ import '../core/app_controller.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import 'link_screen.dart';
+import 'match_details_screen.dart';
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
@@ -51,12 +52,23 @@ class StatsScreen extends StatelessWidget {
                       Navigator.push(context, valcompRoute(const LinkScreen())),
                 )
               else if (summary == null)
-                const SizedBox(
-                  height: 360,
-                  child: Center(
-                    child: CircularProgressIndicator(color: ValcompColors.red),
-                  ),
-                )
+                state.playerError.isNotEmpty
+                    ? EmptyCard(
+                        icon: Icons.cloud_off_rounded,
+                        title: 'Não foi possível atualizar as estatísticas',
+                        body: state.playerError,
+                        copyText: state.playerErrorDetails,
+                        action: 'Tentar novamente',
+                        onAction: state.refreshAll,
+                      )
+                    : const SizedBox(
+                        height: 360,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: ValcompColors.red,
+                          ),
+                        ),
+                      )
               else ...[
                 Container(
                   width: double.infinity,
@@ -153,58 +165,71 @@ class StatsScreen extends StatelessWidget {
                   ...summary.recentMatches
                       .take(10)
                       .map(
-                        (match) => Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: ValcompColors.surface,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: ValcompColors.red.withValues(
-                                    alpha: 0.12,
-                                  ),
-                                  borderRadius: BorderRadius.circular(13),
-                                ),
-                                child: const Icon(
-                                  Icons.sports_esports_outlined,
-                                  color: ValcompColors.red,
-                                ),
+                        (match) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => Navigator.push(
+                                context,
+                                valcompRoute(MatchDetailsScreen(match: match)),
                               ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              borderRadius: BorderRadius.circular(18),
+                              child: Ink(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: ValcompColors.surface,
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: Row(
                                   children: [
-                                    Text(
-                                      _queue(match.queueId),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: ValcompColors.red.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                      child: const Icon(
+                                        Icons.sports_esports_outlined,
+                                        color: ValcompColors.red,
                                       ),
                                     ),
-                                    Text(
-                                      _date(match.startedAt),
-                                      style: const TextStyle(
-                                        color: ValcompColors.muted,
-                                        fontSize: 12,
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _queue(match.queueId),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          Text(
+                                            _date(match.startedAt),
+                                            style: const TextStyle(
+                                              color: ValcompColors.muted,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                    ),
+                                    const Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: ValcompColors.muted,
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                color: ValcompColors.muted,
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),

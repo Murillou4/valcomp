@@ -1,23 +1,26 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$python = Join-Path $root ".venv\Scripts\python.exe"
+$desktop = Join-Path $root "apps\desktop"
+$release = Join-Path $desktop "release\Valcomp Companion.exe"
+$output = Join-Path $root "dist\Valcomp Companion.exe"
 
-if (-not (Test-Path -LiteralPath $python)) {
-    python -m venv (Join-Path $root ".venv")
-    & $python -m pip install --upgrade pip
+Push-Location $desktop
+try {
+    if (Test-Path -LiteralPath (Join-Path $desktop "package-lock.json")) {
+        npm ci
+    } else {
+        npm install
+    }
+    npm run dist
+} finally {
+    Pop-Location
 }
 
-& $python -m pip install -e "${root}[desktop]"
-& $python -m PyInstaller `
-    --noconfirm `
-    --clean `
-    --onefile `
-    --windowed `
-    --noupx `
-    --name "Valcomp Companion" `
-    --icon "$root\valcomp_companion\assets\app-icon.ico" `
-    --version-file "$root\tools\windows_version_info.txt" `
-    --add-data "$root\valcomp_companion\assets;valcomp_companion\assets" `
-    "$root\valcomp_companion\app.py"
+if (-not (Test-Path -LiteralPath $release)) {
+    throw "O electron-builder não gerou o executável esperado: $release"
+}
 
-Write-Host "Build gerado em: $root\dist\Valcomp Companion.exe"
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $output) | Out-Null
+Copy-Item -LiteralPath $release -Destination $output -Force
+
+Write-Host "Build Electron portátil gerado em: $output"

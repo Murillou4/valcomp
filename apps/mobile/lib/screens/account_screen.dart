@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
@@ -143,6 +144,70 @@ class _AccountScreenState extends State<AccountScreen> {
                             ? 'Vincular conta Riot'
                             : 'Vincular novamente',
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              const SectionHeader(title: 'Diagnóstico'),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: ValcompColors.surface,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: ValcompColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.monitor_heart_outlined,
+                          color: ValcompColors.green,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Relatório técnico seguro',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Reúne os últimos eventos deste aparelho e do servidor. Tokens, cookies e identificadores privados são removidos.',
+                      style: TextStyle(color: ValcompColors.muted, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final report = await state.exportDiagnostics();
+                        await Clipboard.setData(ClipboardData(text: report));
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Relatório copiado. Pode enviar ele inteiro.',
+                            ),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        side: const BorderSide(color: ValcompColors.border),
+                      ),
+                      icon: const Icon(Icons.copy_all_rounded),
+                      label: const Text('Copiar relatório completo'),
                     ),
                   ],
                 ),

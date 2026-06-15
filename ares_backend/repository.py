@@ -11,6 +11,7 @@ import asyncpg
 import httpx
 
 from .schemas import (
+    DiagnosticEventRecord,
     NotificationDelivery,
     Profile,
     PushDevice,
@@ -64,6 +65,15 @@ class Repository(Protocol):
     async def list_notification_deliveries(
         self, user_id: str, limit: int = 50
     ) -> list[NotificationDelivery]: ...
+    async def add_diagnostic_event(
+        self, event: DiagnosticEventRecord
+    ) -> DiagnosticEventRecord: ...
+    async def list_diagnostic_events(
+        self, user_id: str, limit: int = 100
+    ) -> list[DiagnosticEventRecord]: ...
+    async def list_all_diagnostic_events(
+        self, limit: int = 500
+    ) -> list[DiagnosticEventRecord]: ...
 
 
 class InMemoryRepository:
@@ -77,6 +87,7 @@ class InMemoryRepository:
         self.push_devices: dict[str, PushDevice] = {}
         self.skin_watches: dict[tuple[str, str], SkinWatch] = {}
         self.notification_deliveries: dict[str, NotificationDelivery] = {}
+        self.diagnostic_events: dict[str, DiagnosticEventRecord] = {}
         self.app_users_by_id: dict[str, AppUserRecord] = {}
         self.app_user_ids_by_email: dict[str, str] = {}
 
@@ -221,6 +232,27 @@ class InMemoryRepository:
             if delivery.user_id == user_id
         ]
         return sorted(rows, key=lambda item: item.sent_at, reverse=True)[:limit]
+
+    async def add_diagnostic_event(
+        self, event: DiagnosticEventRecord
+    ) -> DiagnosticEventRecord:
+        self.diagnostic_events[event.event_id] = event
+        return event
+
+    async def list_diagnostic_events(
+        self, user_id: str, limit: int = 100
+    ) -> list[DiagnosticEventRecord]:
+        rows = [event for event in self.diagnostic_events.values() if event.user_id == user_id]
+        return sorted(rows, key=lambda event: event.occurred_at, reverse=True)[:limit]
+
+    async def list_all_diagnostic_events(
+        self, limit: int = 500
+    ) -> list[DiagnosticEventRecord]:
+        return sorted(
+            self.diagnostic_events.values(),
+            key=lambda event: event.occurred_at,
+            reverse=True,
+        )[:limit]
 
 
 class SupabaseRestRepository:
@@ -387,6 +419,34 @@ class SupabaseRestRepository:
         )
         return [NotificationDelivery(**row) for row in rows]
 
+    async def add_diagnostic_event(
+        self, event: DiagnosticEventRecord
+    ) -> DiagnosticEventRecord:
+        row = await self._upsert_one("diagnostic_events", event.model_dump(mode="json"))
+        return DiagnosticEventRecord(**row)
+
+    async def list_diagnostic_events(
+        self, user_id: str, limit: int = 100
+    ) -> list[DiagnosticEventRecord]:
+        rows = await self._select_many(
+            "diagnostic_events",
+            {
+                "user_id": f"eq.{user_id}",
+                "order": "occurred_at.desc",
+                "limit": str(limit),
+            },
+        )
+        return [DiagnosticEventRecord(**row) for row in rows]
+
+    async def list_all_diagnostic_events(
+        self, limit: int = 500
+    ) -> list[DiagnosticEventRecord]:
+        rows = await self._select_many(
+            "diagnostic_events",
+            {"order": "occurred_at.desc", "limit": str(limit)},
+        )
+        return [DiagnosticEventRecord(**row) for row in rows]
+
     async def _select_one(self, table: str, column: str, value: str) -> dict[str, Any] | None:
         rows = await self._select_many(table, {column: f"eq.{value}", "limit": "1"})
         return rows[0] if rows else None
@@ -450,6 +510,28 @@ class PostgresRepository:
 
             create unique index if not exists app_users_email_lower_idx
               on public.app_users (lower(email));
+
+            create table if not exists public.diagnostic_events (
+              event_id text primary key,
+              user_id text,
+              source text not null,
+              level text not null default 'error',
+              category text not null default 'general',
+              message text not null,
+              context jsonb not null default '{}'::jsonb,
+              stack_trace text not null default '',
+              request_id text not null default '',
+              app_version text not null default '',
+              device_id text not null default '',
+              occurred_at timestamptz not null,
+              created_at timestamptz not null default now()
+            );
+
+            create index if not exists diagnostic_events_user_time_idx
+              on public.diagnostic_events(user_id, occurred_at desc);
+
+            create index if not exists diagnostic_events_source_time_idx
+              on public.diagnostic_events(source, occurred_at desc);
 
             alter table public.profiles drop constraint if exists profiles_user_id_fkey;
             alter table public.riot_accounts drop constraint if exists riot_accounts_user_id_fkey;
@@ -822,6 +904,69 @@ class PostgresRepository:
         )
         return [_notification_delivery_from_row(row) for row in rows]
 
+    async def add_diagnostic_event(
+        self, event: DiagnosticEventRecord
+    ) -> DiagnosticEventRecord:
+        row = await self._fetchrow(
+            """
+            insert into public.diagnostic_events
+              (event_id, user_id, source, level, category, message, context,
+               stack_trace, request_id, app_version, device_id, occurred_at, created_at)
+            values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13)
+            on conflict (event_id) do update set
+              level=excluded.level,
+              category=excluded.category,
+              message=excluded.message,
+              context=excluded.context,
+              stack_trace=excluded.stack_trace,
+              request_id=excluded.request_id
+            returning *
+            """,
+            event.event_id,
+            event.user_id,
+            event.source,
+            event.level,
+            event.category,
+            event.message,
+            json.dumps(event.context),
+            event.stack_trace,
+            event.request_id,
+            event.app_version,
+            event.device_id,
+            event.occurred_at,
+            event.created_at,
+        )
+        assert row is not None
+        return _diagnostic_event_from_row(row)
+
+    async def list_diagnostic_events(
+        self, user_id: str, limit: int = 100
+    ) -> list[DiagnosticEventRecord]:
+        rows = await self._fetch(
+            """
+            select * from public.diagnostic_events
+            where user_id=$1
+            order by occurred_at desc
+            limit $2
+            """,
+            user_id,
+            limit,
+        )
+        return [_diagnostic_event_from_row(row) for row in rows]
+
+    async def list_all_diagnostic_events(
+        self, limit: int = 500
+    ) -> list[DiagnosticEventRecord]:
+        rows = await self._fetch(
+            """
+            select * from public.diagnostic_events
+            order by occurred_at desc
+            limit $1
+            """,
+            limit,
+        )
+        return [_diagnostic_event_from_row(row) for row in rows]
+
     async def _fetchrow(self, query: str, *args: Any) -> asyncpg.Record | None:
         pool = await self._pool()
         return await pool.fetchrow(query, *args)
@@ -897,6 +1042,14 @@ def _notification_delivery_from_row(row: asyncpg.Record) -> NotificationDelivery
     data = _stringify_user_id(_row_dict(row))
     data["ticket_ids"] = _json_list(data.get("ticket_ids", []))
     return NotificationDelivery(**data)
+
+
+def _diagnostic_event_from_row(row: Any) -> DiagnosticEventRecord:
+    data = _row_dict(row)
+    data["context"] = _json_value(data.get("context", {}))
+    if data.get("user_id") is not None:
+        data["user_id"] = str(data["user_id"])
+    return DiagnosticEventRecord(**data)
 
 
 def postgres_ssl_context(enabled: bool) -> ssl.SSLContext | bool:

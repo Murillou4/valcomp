@@ -37,6 +37,22 @@ class FakeRiotClient:
                 "SingleItemOffersRemainingDurationInSeconds": 900,
             },
             "Offers": [{"OfferID": "skin-daily", "Cost": {VP_CURRENCY_ID: 1775}}],
+            "BonusStore": {
+                "BonusStoreOffers": [
+                    {
+                        "BonusOfferID": "bonus-daily",
+                        "Offer": {
+                            "OfferID": "skin-daily",
+                            "Cost": {VP_CURRENCY_ID: 1775},
+                            "Rewards": [{"ItemID": "skin-daily"}],
+                        },
+                        "DiscountPercent": 31,
+                        "DiscountCosts": {VP_CURRENCY_ID: 1225},
+                        "IsSeen": False,
+                    }
+                ],
+                "BonusStoreRemainingDurationInSeconds": 7200,
+            },
         }
 
     async def wallet(self, session: RiotSession) -> dict[str, Any]:
@@ -58,6 +74,81 @@ class FakeRiotClient:
         self, session: RiotSession, *, start_index: int = 0, end_index: int = 20
     ) -> dict[str, Any]:
         return {"History": [], "startIndex": start_index, "endIndex": end_index}
+
+    async def match_details(
+        self, session: RiotSession, match_id: str
+    ) -> dict[str, Any]:
+        return {
+            "matchInfo": {
+                "matchId": match_id,
+                "mapId": "/Game/Maps/Ascent/Ascent",
+                "queueID": "competitive",
+                "isRanked": True,
+                "isCompleted": True,
+                "completionState": "Completed",
+                "gameStartMillis": 1_700_000_000_000,
+                "gameLengthMillis": 2_100_000,
+            },
+            "players": [
+                {
+                    "subject": session.puuid,
+                    "gameName": "Player",
+                    "tagLine": "BR1",
+                    "teamId": "Blue",
+                    "characterId": "agent-jett",
+                    "competitiveTier": 16,
+                    "accountLevel": 100,
+                    "isObserver": False,
+                    "stats": {
+                        "score": 5200,
+                        "roundsPlayed": 20,
+                        "kills": 24,
+                        "deaths": 15,
+                        "assists": 6,
+                    },
+                    "roundDamage": [{"round": 0, "receiver": "enemy", "damage": 180}],
+                }
+            ],
+            "teams": [
+                {
+                    "teamId": "Blue",
+                    "won": True,
+                    "roundsPlayed": 20,
+                    "roundsWon": 13,
+                    "numPoints": 13,
+                },
+                {
+                    "teamId": "Red",
+                    "won": False,
+                    "roundsPlayed": 20,
+                    "roundsWon": 7,
+                    "numPoints": 7,
+                },
+            ],
+            "roundResults": [
+                {
+                    "roundNum": 0,
+                    "winningTeam": "Blue",
+                    "roundResult": "Eliminated",
+                    "roundCeremony": "CeremonyDefault",
+                    "plantSite": "",
+                    "playerStats": [
+                        {
+                            "subject": session.puuid,
+                            "damage": [
+                                {
+                                    "receiver": "enemy",
+                                    "damage": 180,
+                                    "headshots": 1,
+                                    "bodyshots": 2,
+                                    "legshots": 0,
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
 
     async def loadout(self, session: RiotSession) -> dict[str, Any]:
         return {"Guns": []}
@@ -88,6 +179,24 @@ class FakeAssets:
     async def list_items(
         self, category: str, repo: InMemoryRepository | None = None
     ) -> list[dict[str, Any]]:
+        if category == "agents":
+            return [
+                {
+                    "uuid": "agent-jett",
+                    "displayName": "Jett",
+                    "displayIcon": "https://assets.example/jett.png",
+                }
+            ]
+        if category == "maps":
+            return [
+                {
+                    "uuid": "map-ascent",
+                    "displayName": "Ascent",
+                    "mapUrl": "/Game/Maps/Ascent/Ascent",
+                    "listViewIcon": "https://assets.example/ascent-list.png",
+                    "splash": "https://assets.example/ascent.png",
+                }
+            ]
         if category == "weapons":
             return [
                 {
@@ -297,6 +406,15 @@ def test_daily_store_wallet_items_and_status_routes() -> None:
     assert daily.status_code == 200
     assert daily.json()["items"][0]["name"] == "Daily Skin"
     assert daily.json()["items"][0]["price"] == 1775
+    assert daily.json()["night_market_active"] is True
+    assert daily.json()["night_market"][0]["price"] == 1225
+
+    night_market = client.get("/valorant/store/night-market", headers=auth_headers())
+    assert night_market.status_code == 200
+    assert night_market.json()["active"] is True
+    assert night_market.json()["seconds_remaining"] == 7200
+    assert night_market.json()["items"][0]["original_price"] == 1775
+    assert night_market.json()["items"][0]["discount_percent"] == 31
 
     wallet = client.get("/valorant/store/wallet", headers=auth_headers())
     assert wallet.json()["Balances"][VP_CURRENCY_ID] == 3000
@@ -323,6 +441,25 @@ def test_skin_catalog_has_real_weapon_filters() -> None:
     assert payload["items"][0]["weapon_name"] == "Vandal"
     assert payload["items"][0]["category_name"] == "Fuzis"
     assert payload["filters"]["weapons"][0]["id"] == "weapon-vandal"
+
+
+def test_match_details_are_normalized_for_mobile() -> None:
+    client, repo, settings, _ = make_client()
+    seed_linked_user(repo, settings)
+
+    response = client.get(
+        "/valorant/player/matches/match-current",
+        headers=auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["match"]["map_name"] == "Ascent"
+    assert payload["match"]["duration_seconds"] == 2100
+    assert payload["self"]["agent_name"] == "Jett"
+    assert payload["self"]["stats"]["kills"] == 24
+    assert payload["self"]["stats"]["headshot_percent"] == 33.3
+    assert payload["teams"][0]["rounds_won"] == 13
 
 
 def test_routes_list_and_non_remote_execution_are_structured() -> None:
@@ -445,3 +582,51 @@ def test_store_alert_job_is_protected_and_runs_watchlists() -> None:
     assert result.json()["checked_users"] == 1
     assert result.json()["sent_count"] == 1
     assert len(push.messages) == 1
+
+
+def test_diagnostics_are_sanitized_scoped_and_exportable() -> None:
+    client, _, settings, _ = make_client()
+    settings.job_secret_token = "job-secret"
+
+    created = client.post(
+        "/diagnostics/events",
+        headers=auth_headers(),
+        json={
+            "source": "mobile",
+            "level": "error",
+            "category": "api_error",
+            "message": "Falhou para player@example.com com Bearer super-secret-token-value",
+            "context": {
+                "path": "/valorant/store/daily",
+                "access_token": "never-store-this",
+                "puuid": "00000000-0000-4000-8000-000000000000",
+            },
+            "request_id": "mob-request-123",
+            "app_version": "1.0.2+3",
+            "device_id": "physical-device-id",
+        },
+    )
+    assert created.status_code == 200
+    assert created.headers["x-request-id"]
+
+    listed = client.get("/diagnostics/events", headers=auth_headers()).json()["events"]
+    assert len(listed) == 1
+    event = listed[0]
+    assert event["context"]["access_token"] == "[REDACTED]"
+    assert event["context"]["puuid"] == "[REDACTED]"
+    assert event["device_id"].startswith("sha256:")
+    assert "player@example.com" not in event["message"]
+    assert "super-secret-token-value" not in event["message"]
+    assert "user_id" not in event
+
+    blocked = client.get("/jobs/diagnostics/export")
+    assert blocked.status_code == 401
+    exported = client.get(
+        "/jobs/diagnostics/export",
+        headers={"X-Job-Token": "job-secret"},
+    )
+    assert exported.status_code == 200
+    mobile_event = next(
+        event for event in exported.json()["events"] if event["source"] == "mobile"
+    )
+    assert mobile_event["user"]

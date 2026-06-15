@@ -5,8 +5,10 @@ Aplicativo Android em Flutter para consultar dados reais do backend Valcomp:
 - login e cadastro por e-mail/senha;
 - vinculo Riot pelo Valcomp Companion;
 - loja diaria e Mercado Noturno;
-- rank, RR e historico disponivel;
+- rank, RR, historico e detalhes completos das partidas;
+- detalhes de skins com inventario, loja e Mercado Noturno;
 - wishlist de skins e alertas push via Firebase Cloud Messaging.
+- diagnosticos locais e remotos sanitizados, copiaveis pela tela Conta.
 
 ## Desenvolvimento
 

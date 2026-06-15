@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
+import 'diagnostic_log.dart';
 import 'models.dart';
 import 'push_service.dart';
 
@@ -19,9 +21,20 @@ class AppController extends ChangeNotifier {
   bool loading = false;
   bool relinkRequired = false;
   String error = '';
+  String storeError = '';
+  String storeErrorDetails = '';
+  String nightMarketError = '';
+  String nightMarketErrorDetails = '';
+  String playerError = '';
+  String playerErrorDetails = '';
+  String watchError = '';
+  String watchErrorDetails = '';
+  String errorDetails = '';
   int navIndex = 1;
   MeData? me;
   DailyStore? store;
+  NightMarket? nightMarket;
+  bool nightMarketLoading = false;
   PlayerSummary? player;
   List<SkinWatch> watches = const [];
   List<NotificationDelivery> deliveries = const [];
@@ -69,6 +82,7 @@ class AppController extends ChangeNotifier {
   ) async {
     loading = true;
     error = '';
+    errorDetails = '';
     notifyListeners();
     try {
       final result = await action();
@@ -82,8 +96,9 @@ class AppController extends ChangeNotifier {
       unawaited(_pushService.register(api));
       return null;
     } on ApiException catch (exception) {
-      error = exception.message;
-      return exception.message;
+      error = exception.userMessage;
+      errorDetails = exception.fullDetails;
+      return exception.userMessage;
     } finally {
       loading = false;
       notifyListeners();
@@ -95,6 +110,7 @@ class AppController extends ChangeNotifier {
     authenticated = false;
     me = null;
     store = null;
+    nightMarket = null;
     player = null;
     watches = const [];
     deliveries = const [];
@@ -107,12 +123,47 @@ class AppController extends ChangeNotifier {
       notifyListeners();
     }
     error = '';
+    errorDetails = '';
+    storeError = '';
+    storeErrorDetails = '';
+    nightMarketError = '';
+    nightMarketErrorDetails = '';
+    playerError = '';
+    playerErrorDetails = '';
+    watchError = '';
+    watchErrorDetails = '';
     try {
       me = MeData.fromJson(await api.get('/me'));
       relinkRequired = false;
-      await _loadWatchData();
+      try {
+        await _loadWatchData();
+      } on ApiException catch (exception) {
+        watchError = exception.userMessage;
+        watchErrorDetails = exception.fullDetails;
+      }
       if (me?.riotAccount != null) {
-        await Future.wait([loadStore(), loadPlayer()]);
+        try {
+          await loadStore();
+        } on ApiException catch (exception) {
+          if (exception.relinkRequired) {
+            relinkRequired = true;
+          } else {
+            storeError = exception.userMessage;
+            storeErrorDetails = exception.fullDetails;
+          }
+        }
+        if (!relinkRequired) {
+          try {
+            await loadPlayer();
+          } on ApiException catch (exception) {
+            if (exception.relinkRequired) {
+              relinkRequired = true;
+            } else {
+              playerError = exception.userMessage;
+              playerErrorDetails = exception.fullDetails;
+            }
+          }
+        }
       } else {
         store = null;
         player = null;
@@ -122,7 +173,8 @@ class AppController extends ChangeNotifier {
       if (exception.relinkRequired) {
         relinkRequired = true;
       } else {
-        error = exception.message;
+        error = exception.userMessage;
+        errorDetails = exception.fullDetails;
       }
     } finally {
       loading = false;
@@ -146,7 +198,10 @@ class AppController extends ChangeNotifier {
   Future<void> loadStore() async {
     try {
       store = DailyStore.fromJson(await api.get('/valorant/store/daily'));
+      nightMarket = NightMarket.fromDaily(store!);
       relinkRequired = false;
+      storeError = '';
+      storeErrorDetails = '';
     } on ApiException catch (exception) {
       if (exception.relinkRequired) relinkRequired = true;
       rethrow;
@@ -158,6 +213,8 @@ class AppController extends ChangeNotifier {
       player = PlayerSummary.fromJson(
         await api.get('/valorant/player/summary'),
       );
+      playerError = '';
+      playerErrorDetails = '';
     } on ApiException catch (exception) {
       if (exception.relinkRequired) relinkRequired = true;
       rethrow;
@@ -180,7 +237,8 @@ class AppController extends ChangeNotifier {
         response['expires_at']?.toString() ?? '',
       );
     } on ApiException catch (exception) {
-      error = exception.message;
+      error = exception.userMessage;
+      errorDetails = exception.fullDetails;
     } finally {
       loading = false;
       notifyListeners();
@@ -211,7 +269,8 @@ class AppController extends ChangeNotifier {
       );
       skinCatalog = SkinCatalog.fromJson(await api.get(uri.toString()));
     } on ApiException catch (exception) {
-      error = exception.message;
+      error = exception.userMessage;
+      errorDetails = exception.fullDetails;
     } finally {
       skinCatalogLoading = false;
       notifyListeners();
@@ -236,6 +295,7 @@ class AppController extends ChangeNotifier {
   Future<String> sendTestNotification() async {
     loading = true;
     error = '';
+    errorDetails = '';
     notifyListeners();
     try {
       await _pushService.register(api);
@@ -250,8 +310,9 @@ class AppController extends ChangeNotifier {
       }
       return 'O Firebase não conseguiu entregar o teste. Tente novamente em instantes.';
     } on ApiException catch (exception) {
-      error = exception.message;
-      return exception.message;
+      error = exception.userMessage;
+      errorDetails = exception.fullDetails;
+      return exception.userMessage;
     } on Object {
       return 'Não foi possível registrar as notificações neste aparelho.';
     } finally {
@@ -264,6 +325,58 @@ class AppController extends ChangeNotifier {
     await api.patch('/me', body: {'display_name': displayName.trim()});
     me = MeData.fromJson(await api.get('/me'));
     notifyListeners();
+  }
+
+  Future<MatchDetails> getMatchDetails(String matchId) async {
+    return MatchDetails.fromJson(
+      await api.get('/valorant/player/matches/$matchId'),
+    );
+  }
+
+  Future<ItemStatus> getItemStatus(String itemId) async {
+    return ItemStatus.fromJson(await api.get('/valorant/items/$itemId/status'));
+  }
+
+  Future<void> loadNightMarket({bool force = false}) async {
+    if (nightMarketLoading || (!force && nightMarket != null)) return;
+    nightMarketLoading = true;
+    nightMarketError = '';
+    nightMarketErrorDetails = '';
+    notifyListeners();
+    try {
+      nightMarket = NightMarket.fromJson(
+        await api.get('/valorant/store/night-market'),
+      );
+      relinkRequired = false;
+    } on ApiException catch (exception) {
+      if (exception.relinkRequired) relinkRequired = true;
+      nightMarketError = exception.userMessage;
+      nightMarketErrorDetails = exception.fullDetails;
+    } finally {
+      nightMarketLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String> exportDiagnostics() async {
+    final local = await DiagnosticLog.instance.exportText();
+    try {
+      final remote = await api.get('/diagnostics/events?limit=100');
+      return [
+        local,
+        '',
+        'BACKEND DIAGNOSTICS',
+        const JsonEncoder.withIndent('  ').convert(remote),
+      ].join('\n');
+    } on ApiException catch (exception) {
+      return [
+        local,
+        '',
+        'BACKEND DIAGNOSTICS',
+        'Não foi possível consultar o backend.',
+        exception.fullDetails,
+      ].join('\n');
+    }
   }
 }
 

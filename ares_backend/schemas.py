@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -146,6 +147,10 @@ class StoreItem(BaseModel):
     full_render: str = ""
     tier: str = ""
     price: int | None = None
+    original_price: int | None = None
+    discount_percent: int | None = None
+    is_seen: bool | None = None
+    bonus_offer_id: str = ""
     currency_id: str = ""
     source: str
 
@@ -155,7 +160,17 @@ class StoreDailyResponse(BaseModel):
     seconds_remaining: int | None = None
     items: list[StoreItem]
     night_market: list[StoreItem] = Field(default_factory=list)
+    night_market_expires_at: datetime | None = None
+    night_market_seconds_remaining: int | None = None
+    night_market_active: bool = False
     raw: dict[str, Any] = Field(default_factory=dict)
+
+
+class NightMarketResponse(BaseModel):
+    active: bool
+    expires_at: datetime | None = None
+    seconds_remaining: int | None = None
+    items: list[StoreItem] = Field(default_factory=list)
 
 
 class ItemStatusResponse(BaseModel):
@@ -262,3 +277,26 @@ class JobRunResponse(BaseModel):
     relink_required: int
     sent_count: int
     errors: list[str] = Field(default_factory=list)
+
+
+DiagnosticSource = Literal["mobile", "desktop", "backend"]
+DiagnosticLevel = Literal["debug", "info", "warning", "error", "critical"]
+
+
+class DiagnosticEventCreate(BaseModel):
+    event_id: str = Field(default_factory=lambda: str(uuid4()), max_length=80)
+    source: DiagnosticSource
+    level: DiagnosticLevel = "error"
+    category: str = Field(default="general", max_length=120)
+    message: str = Field(min_length=1, max_length=4000)
+    context: dict[str, Any] = Field(default_factory=dict)
+    stack_trace: str = Field(default="", max_length=16000)
+    request_id: str = Field(default="", max_length=120)
+    app_version: str = Field(default="", max_length=80)
+    device_id: str = Field(default="", max_length=240)
+    occurred_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class DiagnosticEventRecord(DiagnosticEventCreate):
+    user_id: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/theme.dart';
+import '../widgets/common.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -180,21 +181,11 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                           ),
                           if (state.error.isNotEmpty)
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: ValcompColors.red.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Text(
-                                state.error,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: ValcompColors.red,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: ErrorNotice(
+                                message: state.error,
+                                details: state.errorDetails,
                               ),
                             ),
                         ],

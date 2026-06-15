@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/theme.dart';
 
@@ -136,6 +137,7 @@ class EmptyCard extends StatelessWidget {
     required this.body,
     this.action,
     this.onAction,
+    this.copyText,
   });
 
   final IconData icon;
@@ -143,6 +145,7 @@ class EmptyCard extends StatelessWidget {
   final String body;
   final String? action;
   final VoidCallback? onAction;
+  final String? copyText;
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +176,72 @@ class EmptyCard extends StatelessWidget {
             const SizedBox(height: 18),
             FilledButton(onPressed: onAction, child: Text(action!)),
           ],
+          if (copyText?.isNotEmpty == true) ...[
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: copyText!));
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Detalhes técnicos copiados.')),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('Copiar detalhes do erro'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class ErrorNotice extends StatelessWidget {
+  const ErrorNotice({super.key, required this.message, this.details});
+
+  final String message;
+  final String? details;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: ValcompColors.red.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ValcompColors.red.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: ValcompColors.red,
+            size: 20,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: ValcompColors.red, height: 1.3),
+            ),
+          ),
+          if (details?.isNotEmpty == true)
+            IconButton(
+              tooltip: 'Copiar detalhes do erro',
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: details!));
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Detalhes técnicos copiados.')),
+                );
+              },
+              icon: const Icon(
+                Icons.copy_rounded,
+                color: ValcompColors.red,
+                size: 19,
+              ),
+            ),
         ],
       ),
     );

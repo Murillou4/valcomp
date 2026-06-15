@@ -24,8 +24,9 @@ Nunca invente campos do jogo. Antes de criar UI ou normalizadores, confira
 
 ## 2. Companion Windows
 
-- Codigo: `valcomp_companion/`
-- Runtime: Python + PySide6.
+- Codigo atual: `apps/desktop/`
+- Runtime: Electron, com Node.js apenas no processo principal e
+  `contextIsolation` no renderer.
 - Desenvolvimento: `.\run-companion.ps1`
 - Build: `.\tools\build_companion_windows.ps1`
 
@@ -33,6 +34,11 @@ O companion roda uma vez no PC em que o usuario joga, detecta a sessao local
 Riot, recebe o codigo de seis digitos e completa `/riot/link/complete`. Ele nao
 mostra nem salva tokens. Deve ser aberto novamente somente quando o backend
 retornar `relink_required`.
+
+O artefato de distribuicao deve continuar sendo um unico
+`Valcomp Companion.exe`, no formato portable do `electron-builder`. A pasta
+`valcomp_companion/` e o companion Python antigo sao legado e nao devem receber
+novas features.
 
 ## 3. Mobile Flutter
 
@@ -70,6 +76,7 @@ Telas:
 - Home;
 - Loja diaria/Mercado Noturno;
 - Estatisticas;
+- detalhes completos de partidas e skins;
 - Vincular;
 - Wishlist/Alertas;
 - Conta.
@@ -103,6 +110,7 @@ Rotas prioritarias:
 - `GET /valorant/items/{category}`
 - `GET /valorant/items/{item_id}/status`
 - `GET /valorant/player/summary`
+- `GET /valorant/player/matches/{match_id}`
 - `GET /valorant/skins/watchlist`
 
 Valorant-API fornece assets publicos. Loja, conta, rank e historico privados vem
@@ -137,19 +145,34 @@ X-Job-Token: <JOB_SECRET_TOKEN>
 - Nunca logar SSID, access token, entitlement, cookies ou PUUID completo.
 - Service role, senha Postgres, chave Firebase e chave Android nao entram no Git.
 - Companion nao persiste a sessao Riot em disco.
+- Logs locais e remotos passam por sanitizacao antes de serem gravados.
 - Mutacoes Riot ficam bloqueadas por padrao.
 - Rotas locais/chat/party ao vivo retornam status estruturado no backend.
+
+## Diagnosticos
+
+- Backend: eventos sanitizados em `diagnostic_events`, JSON estruturado no
+  stdout do Fly e `GET /jobs/diagnostics/export`.
+- Mobile: JSONL rotativo no armazenamento do app, envio sanitizado para
+  `POST /diagnostics/events` e copia pela tela Conta.
+- Desktop: JSONL rotativo em `%APPDATA%\Valcomp Companion\logs`, com botoes para
+  copiar o relatorio ou abrir a pasta.
+- Coleta administrativa: `.\tools\pull_diagnostics.ps1`.
 
 ## Validacao
 
 ```powershell
 python -m pytest
-python -m compileall -q ares_backend valcomp_companion
+python -m compileall -q ares_backend
 
 cd apps/mobile
 flutter analyze
 flutter test
 flutter build apk --release
+
+cd ..\desktop
+npm audit
+npm run dist
 ```
 
 Arquivos por responsabilidade:
@@ -159,7 +182,8 @@ Arquivos por responsabilidade:
 - Loja: `ares_backend/store.py`
 - Assets: `ares_backend/assets.py`
 - Player normalizado: `ares_backend/player.py`
+- Diagnosticos: `ares_backend/diagnostics.py`
 - Push/wishlist: `ares_backend/notifications.py`
 - Banco: `ares_backend/repository.py`, `supabase/schema.sql`
 - Mobile: `apps/mobile/lib/`
-- Companion: `valcomp_companion/app.py`
+- Companion: `apps/desktop/src/`

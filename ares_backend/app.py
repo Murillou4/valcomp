@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated, Any
+from uuid import uuid4
 
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
@@ -23,14 +26,22 @@ from .assets import (
 )
 from .auth import SupabaseAuth
 from .capabilities import classify_endpoint
+from .diagnostics import (
+    diagnostic_record,
+    emit_log,
+    redact_text,
+    sanitize_context,
+    user_fingerprint,
+)
 from .errors import BackendError, RelinkRequiredError, RiotRequestError, UnauthorizedError
 from .notifications import PushClient, StoreAlertService
-from .player import normalize_player_summary
+from .player import normalize_match_details, normalize_player_summary
 from .repository import Repository, build_repository
 from .riot import REGION_TO_SHARD, RiotAuthService, RiotRemoteClient, RiotSession
 from .schemas import (
     AuthSessionResponse,
     AuthUser,
+    DiagnosticEventCreate,
     GenericRouteRequest,
     GenericRouteResponse,
     LinkCompleteRequest,
@@ -122,12 +133,136 @@ def create_app(
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def request_diagnostics(request: Request, call_next: Any) -> JSONResponse:
+        supplied_request_id = request.headers.get("X-Request-ID", "").strip()
+        request_id = (
+            supplied_request_id[:120]
+            if 8 <= len(supplied_request_id) <= 120
+            else str(uuid4())
+        )
+        request.state.request_id = request_id
+        started = time.perf_counter()
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+        emit_log(
+            "http_request",
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            elapsed_ms=elapsed_ms,
+            user=user_fingerprint(getattr(request.state, "user_id", None)),
+            client=request.headers.get("X-Valcomp-Client", "")[:80],
+        )
+        return response
+
     @app.exception_handler(BackendError)
-    async def backend_error_handler(_: Request, exc: BackendError) -> JSONResponse:
-        payload: dict[str, Any] = {"error": {"code": exc.code, "message": str(exc)}}
+    async def backend_error_handler(request: Request, exc: BackendError) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", str(uuid4()))
+        message = redact_text(str(exc), max_length=4000)
+        payload: dict[str, Any] = {
+            "error": {
+                "code": exc.code,
+                "message": message,
+                "request_id": request_id,
+            }
+        }
         if isinstance(exc, RiotRequestError) and exc.riot_status is not None:
             payload["error"]["riot_status"] = exc.riot_status
+        await persist_backend_error(request, exc.code, message, exc.status_code)
         return JSONResponse(status_code=exc.status_code, content=payload)
+
+    @app.exception_handler(HTTPException)
+    async def http_error_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", str(uuid4()))
+        detail = exc.detail if isinstance(exc.detail, dict) else {}
+        code = str(detail.get("code") or "http_error")
+        message = redact_text(
+            str(detail.get("message") or exc.detail or "Não foi possível concluir esta ação."),
+            max_length=4000,
+        )
+        await persist_backend_error(request, code, message, exc.status_code)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": {
+                    "code": code,
+                    "message": message,
+                    "request_id": request_id,
+                }
+            },
+            headers=exc.headers,
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", str(uuid4()))
+        await persist_backend_error(
+            request,
+            "internal_error",
+            f"{type(exc).__name__}: {exc}",
+            500,
+            stack_trace=repr(exc),
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "internal_error",
+                    "message": "Algo deu errado no servidor. Tente novamente em instantes.",
+                    "request_id": request_id,
+                }
+            },
+        )
+
+    async def persist_backend_error(
+        request: Request,
+        code: str,
+        message: str,
+        status_code: int,
+        *,
+        stack_trace: str = "",
+    ) -> None:
+        request_id = getattr(request.state, "request_id", "")
+        user_id = getattr(request.state, "user_id", None)
+        emit_log(
+            "request_error",
+            request_id=request_id,
+            path=request.url.path,
+            method=request.method,
+            status=status_code,
+            code=code,
+            message=message,
+            user=user_fingerprint(user_id),
+        )
+        try:
+            record = diagnostic_record(
+                DiagnosticEventCreate(
+                    source="backend",
+                    level="error" if status_code < 500 else "critical",
+                    category=code,
+                    message=message,
+                    context={
+                        "path": request.url.path,
+                        "method": request.method,
+                        "status_code": status_code,
+                    },
+                    stack_trace=stack_trace,
+                    request_id=request_id,
+                    app_version=app.version,
+                ),
+                user_id=user_id,
+                fallback_request_id=request_id,
+            )
+            await services.repo.add_diagnostic_event(record)
+        except Exception as persist_error:
+            emit_log(
+                "diagnostic_persist_failed",
+                request_id=request_id,
+                error=type(persist_error).__name__,
+            )
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
@@ -174,6 +309,67 @@ def create_app(
     ) -> dict[str, Any]:
         profile = await ensure_profile(user, svc.repo)
         return {"valid": True, "user": user.model_dump(), "profile": profile.model_dump()}
+
+    @app.post("/diagnostics/events")
+    async def create_diagnostic_event(
+        payload: DiagnosticEventCreate,
+        user: Annotated[AuthUser, Depends(current_user)],
+        request: Request,
+        svc: Annotated[AppServices, Depends(get_services)],
+    ) -> dict[str, Any]:
+        record = diagnostic_record(
+            payload,
+            user_id=user.id,
+            fallback_request_id=getattr(request.state, "request_id", ""),
+        )
+        saved = await svc.repo.add_diagnostic_event(record)
+        emit_log(
+            "client_diagnostic",
+            event_id=saved.event_id,
+            source=saved.source,
+            level=saved.level,
+            category=saved.category,
+            request_id=saved.request_id,
+            user=user_fingerprint(user.id),
+        )
+        return {
+            "accepted": True,
+            "event_id": saved.event_id,
+            "request_id": saved.request_id,
+        }
+
+    @app.get("/diagnostics/events")
+    async def list_diagnostic_events(
+        user: Annotated[AuthUser, Depends(current_user)],
+        svc: Annotated[AppServices, Depends(get_services)],
+        limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    ) -> dict[str, Any]:
+        rows = await svc.repo.list_diagnostic_events(user.id, limit)
+        return {
+            "events": [
+                row.model_dump(mode="json", exclude={"user_id"}) for row in rows
+            ]
+        }
+
+    @app.get("/jobs/diagnostics/export")
+    async def export_diagnostic_events(
+        svc: Annotated[AppServices, Depends(get_services)],
+        x_job_token: Annotated[str | None, Header(alias="X-Job-Token")] = None,
+        limit: Annotated[int, Query(ge=1, le=5000)] = 1000,
+    ) -> dict[str, Any]:
+        require_job_token(svc.settings, x_job_token)
+        rows = await svc.repo.list_all_diagnostic_events(limit)
+        return {
+            "generated_at": datetime.now(UTC).isoformat(),
+            "environment": svc.settings.environment,
+            "events": [
+                {
+                    **row.model_dump(mode="json", exclude={"user_id"}),
+                    "user": user_fingerprint(row.user_id),
+                }
+                for row in rows
+            ],
+        }
 
     @app.post("/riot/link/start", response_model=LinkStartResponse)
     async def link_start(
@@ -399,12 +595,8 @@ def create_app(
         svc: Annotated[AppServices, Depends(get_services)],
     ) -> dict[str, Any]:
         session = await riot_session_for_user(user, svc)
-        daily = await svc.store.daily_store(user.id, session)
-        return {
-            "expires_at": daily.expires_at,
-            "items": [item.model_dump() for item in daily.night_market],
-            "active": bool(daily.night_market),
-        }
+        result = await svc.store.night_market(user.id, session)
+        return result.model_dump(mode="json")
 
     @app.get("/valorant/store/bundles")
     async def store_bundles(
@@ -596,6 +788,33 @@ def create_app(
             session, start_index=start_index, end_index=end_index
         )
 
+    @app.get("/valorant/player/matches/{match_id}")
+    async def player_match_details(
+        match_id: str,
+        user: Annotated[AuthUser, Depends(current_user)],
+        svc: Annotated[AppServices, Depends(get_services)],
+    ) -> dict[str, Any]:
+        if len(match_id) < 8 or len(match_id) > 100:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_match_id",
+                    "message": "O identificador da partida é inválido.",
+                },
+            )
+        session = await riot_session_for_user(user, svc)
+        raw = await svc.riot_client.match_details(session, match_id)
+        agents, maps = await asyncio.gather(
+            svc.assets.list_items("agents", svc.repo),
+            svc.assets.list_items("maps", svc.repo),
+        )
+        return normalize_match_details(
+            raw,
+            player_puuid=session.puuid,
+            agents=agents,
+            maps=maps,
+        )
+
     @app.get("/valorant/player/loadout")
     async def player_loadout(
         user: Annotated[AuthUser, Depends(current_user)],
@@ -673,7 +892,9 @@ async def current_user(
     authorization: Annotated[str | None, Header()] = None,
 ) -> AuthUser:
     try:
-        return await request.app.state.services.auth.verify_authorization_async(authorization)
+        user = await request.app.state.services.auth.verify_authorization_async(authorization)
+        request.state.user_id = user.id
+        return user
     except UnauthorizedError:
         raise
 

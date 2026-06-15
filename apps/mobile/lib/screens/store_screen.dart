@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/store_item_card.dart';
 import 'link_screen.dart';
+import 'item_details_screen.dart';
 import 'wishlist_screen.dart';
 
 class StoreScreen extends StatefulWidget {
@@ -18,11 +19,16 @@ class StoreScreen extends StatefulWidget {
 class _StoreScreenState extends State<StoreScreen> {
   bool _night = false;
 
+  void _selectNightMarket(AppController state) {
+    setState(() => _night = true);
+    state.loadNightMarket(force: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppController>();
     final items = _night
-        ? state.store?.nightMarket ?? const []
+        ? state.nightMarket?.items ?? state.store?.nightMarket ?? const []
         : state.store?.items ?? const [];
     return SafeArea(
       bottom: false,
@@ -75,7 +81,7 @@ class _StoreScreenState extends State<StoreScreen> {
                     child: _StoreTab(
                       title: 'Mercado Noturno',
                       active: _night,
-                      onTap: () => setState(() => _night = true),
+                      onTap: () => _selectNightMarket(state),
                     ),
                   ),
                 ],
@@ -93,12 +99,22 @@ class _StoreScreenState extends State<StoreScreen> {
                   onAction: () =>
                       Navigator.push(context, valcompRoute(const LinkScreen())),
                 )
-              else if (state.loading && state.store == null)
+              else if ((state.loading && state.store == null) ||
+                  (_night && state.nightMarketLoading && items.isEmpty))
                 const SizedBox(
                   height: 320,
                   child: Center(
                     child: CircularProgressIndicator(color: ValcompColors.red),
                   ),
+                )
+              else if (_night && state.nightMarketError.isNotEmpty)
+                EmptyCard(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'Não foi possível abrir o Mercado Noturno',
+                  body: state.nightMarketError,
+                  copyText: state.nightMarketErrorDetails,
+                  action: 'Tentar novamente',
+                  onAction: () => state.loadNightMarket(force: true),
                 )
               else if (items.isEmpty)
                 EmptyCard(
@@ -109,20 +125,49 @@ class _StoreScreenState extends State<StoreScreen> {
                       ? 'Mercado Noturno indisponível'
                       : 'Loja não carregada',
                   body: _night
-                      ? 'Quando o Mercado Noturno estiver ativo na sua conta, os itens aparecerão aqui.'
+                      ? 'O Mercado Noturno não está ativo para sua conta neste momento. Assim que a Riot liberar uma nova edição, as ofertas aparecerão aqui.'
                       : 'Puxe a tela para baixo para consultar novamente.',
                 )
               else
                 ...items.map(
                   (item) => Padding(
                     padding: const EdgeInsets.only(bottom: 22),
-                    child: StoreItemCard(item: item),
+                    child: StoreItemCard(
+                      item: item,
+                      onTap: () => Navigator.push(
+                        context,
+                        valcompRoute(
+                          ItemDetailsScreen(
+                            itemId: item.itemId,
+                            name: item.name,
+                            image: item.image,
+                            tier: item.tier,
+                            knownPrice: item.price,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              if (state.store?.expiresAt != null && items.isNotEmpty)
+              if (state.storeError.isNotEmpty && state.linked) ...[
+                const SizedBox(height: 18),
+                EmptyCard(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'Não foi possível atualizar a loja',
+                  body: state.storeError,
+                  copyText: state.storeErrorDetails,
+                  action: 'Tentar novamente',
+                  onAction: state.refreshAll,
+                ),
+              ],
+              if ((_night
+                      ? state.nightMarket?.expiresAt ??
+                            state.store?.nightMarketExpiresAt
+                      : state.store?.expiresAt) !=
+                  null)
                 Center(
                   child: Text(
-                    'Rotação em ${_remaining(state.store!.expiresAt!)}',
+                    '${_night ? 'Termina' : 'Rotação'} em ${_remaining((_night ? state.nightMarket?.expiresAt ?? state.store?.nightMarketExpiresAt : state.store?.expiresAt)!)}',
                     style: const TextStyle(color: ValcompColors.muted),
                   ),
                 ),

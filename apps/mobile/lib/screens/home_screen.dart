@@ -96,10 +96,7 @@ class HomeScreen extends StatelessWidget {
               _StatusFeature(state: state),
               if (state.error.isNotEmpty) ...[
                 const SizedBox(height: 18),
-                Text(
-                  state.error,
-                  style: const TextStyle(color: ValcompColors.red),
-                ),
+                ErrorNotice(message: state.error, details: state.errorDetails),
               ],
             ],
           ),

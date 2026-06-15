@@ -15,6 +15,28 @@ create table if not exists public.app_users (
 create unique index if not exists app_users_email_lower_idx
   on public.app_users (lower(email));
 
+create table if not exists public.diagnostic_events (
+  event_id text primary key,
+  user_id text,
+  source text not null,
+  level text not null default 'error',
+  category text not null default 'general',
+  message text not null,
+  context jsonb not null default '{}'::jsonb,
+  stack_trace text not null default '',
+  request_id text not null default '',
+  app_version text not null default '',
+  device_id text not null default '',
+  occurred_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists diagnostic_events_user_time_idx
+  on public.diagnostic_events(user_id, occurred_at desc);
+
+create index if not exists diagnostic_events_source_time_idx
+  on public.diagnostic_events(source, occurred_at desc);
+
 create table if not exists public.profiles (
   user_id uuid primary key,
   display_name text not null default '',

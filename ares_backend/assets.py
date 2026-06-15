@@ -10,6 +10,8 @@ from .settings import BackendSettings
 
 
 ASSET_ENDPOINTS = {
+    "agents": "agents",
+    "maps": "maps",
     "weapons": "weapons",
     "skins": "weapons/skins",
     "skin-levels": "weapons/skinlevels",

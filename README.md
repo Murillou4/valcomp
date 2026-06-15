@@ -182,7 +182,8 @@ gera spam dentro da mesma rotacao de loja.
 ### Companion Windows
 
 Depois que o app chamar `POST /riot/link/start`, rode no PC onde o Riot Client
-esta logado. Para abrir o app visual do companion em desenvolvimento:
+esta logado. O companion atual fica em `apps/desktop` e usa Electron. Para
+abri-lo em desenvolvimento:
 
 ```powershell
 .\run-companion.ps1
@@ -196,9 +197,10 @@ Para usar o modo CLI:
   --code 123456
 ```
 
-O companion le a sessao Riot local, envia tokens/SSID para o backend pelo codigo
-one-time e pode ser fechado. Se a sessao expirar ou MFA bloquear o refresh, a API
-retorna `relink_required`.
+O processo principal do Electron le a sessao Riot local, envia tokens/SSID para
+o backend pelo codigo one-time e pode ser fechado. Esses dados ficam somente em
+memoria. Se a sessao expirar ou MFA bloquear o refresh, a API retorna
+`relink_required`.
 
 Para gerar o build Windows:
 
@@ -220,7 +222,7 @@ flutter run
 ```
 
 As telas cobrem login/cadastro, Home, loja diaria/Mercado Noturno, estatisticas,
-vinculo, wishlist/alertas e conta.
+detalhes de partidas e skins, vinculo, wishlist/alertas e conta.
 
 ### Fly.io
 

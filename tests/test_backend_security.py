@@ -1,8 +1,13 @@
+import asyncio
+from datetime import UTC, datetime, timedelta
+
+import httpx
 import jwt
 import pytest
 
 from ares_backend.auth import SupabaseAuth
-from ares_backend.errors import UnauthorizedError
+from ares_backend.errors import RelinkRequiredError, UnauthorizedError
+from ares_backend.riot import RiotRemoteClient, RiotSession, access_token_needs_refresh
 from ares_backend.security import CryptoService, redact_secret
 from ares_backend.settings import BackendSettings
 
@@ -53,3 +58,46 @@ def test_auth_requires_bearer_token() -> None:
     with pytest.raises(UnauthorizedError):
         auth.verify_authorization(None)
 
+
+def test_expired_riot_access_token_requires_refresh() -> None:
+    expired = jwt.encode(
+        {"exp": datetime.now(UTC) - timedelta(minutes=1)},
+        "unused-test-key",
+        algorithm="HS256",
+    )
+    valid = jwt.encode(
+        {"exp": datetime.now(UTC) + timedelta(minutes=10)},
+        "unused-test-key",
+        algorithm="HS256",
+    )
+
+    assert access_token_needs_refresh(expired) is True
+    assert access_token_needs_refresh(valid) is False
+
+
+def test_bad_claims_from_riot_becomes_relink_required() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"errorCode": "BAD_CLAIMS"})
+
+    async def run() -> None:
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = RiotRemoteClient(
+            BackendSettings(app_secret_key="unit-test-secret"),
+            client=http,
+        )
+        session = RiotSession(
+            access_token="expired",
+            entitlement_token="expired",
+            puuid="player",
+            region="br",
+            shard="na",
+            client_version="release-test",
+            client_platform="platform",
+        )
+
+        with pytest.raises(RelinkRequiredError):
+            await client.mmr(session)
+
+        await http.aclose()
+
+    asyncio.run(run())

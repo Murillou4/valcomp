@@ -9,6 +9,7 @@ import '../core/models.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/store_item_card.dart';
+import 'item_details_screen.dart';
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({super.key});
@@ -622,72 +623,94 @@ class _CatalogItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = tierColors[item.tier] ?? ValcompColors.surfaceRaised;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 11),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ValcompColors.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 94,
-            height: 64,
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: CachedNetworkImage(
-              imageUrl: item.displayIcon,
-              fit: BoxFit.contain,
-              errorWidget: (_, __, ___) =>
-                  const Icon(Icons.sports_esports_outlined),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.push(
+            context,
+            valcompRoute(
+              ItemDetailsScreen(
+                itemId: item.itemId,
+                name: item.name,
+                image: item.displayIcon,
+                tier: item.tier,
+              ),
             ),
           ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: ValcompColors.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
               children: [
-                Text(
-                  item.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
+                Container(
+                  width: 94,
+                  height: 64,
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: item.displayIcon,
+                    fit: BoxFit.contain,
+                    errorWidget: (_, __, ___) =>
+                        const Icon(Icons.sports_esports_outlined),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${item.weaponName} • ${item.categoryName}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ValcompColors.muted,
-                    fontSize: 11,
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${item.weaponName} • ${item.categoryName}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: ValcompColors.muted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: watched ? 'Skin monitorada' : 'Adicionar à wishlist',
+                  onPressed: watched
+                      ? null
+                      : () =>
+                            context.read<AppController>().addWatch(item.itemId),
+                  style: IconButton.styleFrom(
+                    backgroundColor: watched
+                        ? ValcompColors.green.withValues(alpha: 0.12)
+                        : ValcompColors.red,
+                    foregroundColor: watched
+                        ? ValcompColors.green
+                        : Colors.white,
+                  ),
+                  icon: Icon(watched ? Icons.check_rounded : Icons.add_rounded),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            tooltip: watched ? 'Skin monitorada' : 'Adicionar à wishlist',
-            onPressed: watched
-                ? null
-                : () => context.read<AppController>().addWatch(item.itemId),
-            style: IconButton.styleFrom(
-              backgroundColor: watched
-                  ? ValcompColors.green.withValues(alpha: 0.12)
-                  : ValcompColors.red,
-              foregroundColor: watched ? ValcompColors.green : Colors.white,
-            ),
-            icon: Icon(watched ? Icons.check_rounded : Icons.add_rounded),
-          ),
-        ],
+        ),
       ),
     );
   }

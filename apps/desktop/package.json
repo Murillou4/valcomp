@@ -1,0 +1,47 @@
+{
+  "name": "valcomp-companion",
+  "version": "1.1.0",
+  "description": "Companion Windows do Valcomp para vincular uma sessão Riot local.",
+  "main": "src/main.js",
+  "author": "Valcomp",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "42.4.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.cda2.valcomp.companion",
+    "productName": "Valcomp Companion",
+    "asar": true,
+    "compression": "maximum",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/app-icon.ico",
+      "artifactName": "Valcomp Companion.exe",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "Valcomp Companion.exe",
+      "requestExecutionLevel": "user"
+    }
+  }
+}

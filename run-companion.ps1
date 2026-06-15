@@ -1,12 +1,13 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$python = Join-Path $root ".venv\Scripts\python.exe"
+$desktop = Join-Path $root "apps\desktop"
 
-if (-not (Test-Path -LiteralPath $python)) {
-    python -m venv (Join-Path $root ".venv")
-    & $python -m pip install --upgrade pip
+Push-Location $desktop
+try {
+    if (-not (Test-Path -LiteralPath "node_modules")) {
+        npm install
+    }
+    npm start
+} finally {
+    Pop-Location
 }
-
-& $python -m pip install -e "${root}[desktop]"
-& $python -m valcomp_companion.app
-

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'"
+    />
+    <title>Valcomp Companion</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="brand">
+          <img src="../../assets/logo.png" alt="Valcomp" />
+          <span>COMPANION</span>
+        </div>
+        <div class="secure-pill">
+          <span class="secure-dot"></span>
+          Sessão protegida
+        </div>
+      </section>
+
+      <section class="content">
+        <div class="intro">
+          <p class="eyebrow">VINCULE UMA ÚNICA VEZ</p>
+          <h1>Conecte sua conta Riot ao celular.</h1>
+          <p class="lead">
+            Deixe o Riot Client ou VALORANT aberto. O Companion detecta sua conta
+            automaticamente e envia a sessão diretamente ao Valcomp.
+          </p>
+        </div>
+
+        <div class="steps" aria-label="Etapas da vinculação">
+          <div class="step active" id="step-detect">
+            <span>1</span>
+            <div><strong>Detectar</strong><small>Conta Riot neste PC</small></div>
+          </div>
+          <div class="step" id="step-code">
+            <span>2</span>
+            <div><strong>Confirmar</strong><small>Código do celular</small></div>
+          </div>
+          <div class="step" id="step-done">
+            <span>3</span>
+            <div><strong>Pronto</strong><small>Vínculo concluído</small></div>
+          </div>
+        </div>
+
+        <div class="status neutral" id="status" role="status">
+          <div class="status-icon" id="status-icon">
+            <span class="spinner"></span>
+          </div>
+          <div>
+            <strong id="status-title">Procurando sua conta Riot</strong>
+            <p id="status-message">Isso costuma levar apenas alguns segundos.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="code-area">
+            <label for="link-code">Código mostrado no app</label>
+            <div class="code-wrap">
+              <input
+                id="link-code"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="000000"
+                aria-describedby="code-help"
+              />
+              <span class="code-ready" id="code-ready">6 dígitos</span>
+            </div>
+            <p id="code-help">No celular: Conta → Vincular conta Riot → Gerar código.</p>
+          </div>
+
+          <div class="actions">
+            <button class="button secondary" id="detect-button" type="button">
+              Detectar novamente
+            </button>
+            <button class="button primary" id="link-button" type="button" disabled>
+              Vincular minha conta
+            </button>
+          </div>
+        </div>
+
+        <button class="advanced-toggle" id="advanced-toggle" type="button">
+          Opções avançadas
+          <span>⌄</span>
+        </button>
+        <div class="advanced" id="advanced" hidden>
+          <label for="backend-url">Servidor do Valcomp</label>
+          <input
+            id="backend-url"
+            value="https://valcomp-api-cda2.fly.dev"
+            spellcheck="false"
+          />
+          <p>Não altere este endereço, exceto ao testar seu próprio servidor.</p>
+        </div>
+
+        <footer>
+          <p>
+            Nenhum token, cookie ou senha aparece nesta tela ou fica salvo pelo
+            Companion.
+          </p>
+          <div class="footer-actions">
+            <button id="copy-error" type="button" hidden>Copiar erro</button>
+            <button id="copy-diagnostics" type="button">Copiar diagnóstico</button>
+            <button id="open-logs" type="button">Abrir logs</button>
+          </div>
+        </footer>
+      </section>
+    </main>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

@@ -2,6 +2,7 @@ from ares_backend.store import (
     VP_CURRENCY_ID,
     extract_daily_offer_ids,
     extract_night_market_offer_ids,
+    extract_night_market_offers,
     extract_prices,
     inventory_item_ids,
 )
@@ -49,10 +50,17 @@ def test_extracts_night_market_and_inventory_ids() -> None:
         "BonusStore": {
             "BonusStoreOffers": [
                 {
-                    "Offer": {"Rewards": [{"ItemID": "skin-night"}]},
+                    "BonusOfferID": "bonus-offer",
+                    "Offer": {
+                        "Rewards": [{"ItemID": "skin-night"}],
+                        "Cost": {VP_CURRENCY_ID: 1775},
+                    },
+                    "DiscountPercent": 36,
                     "DiscountCosts": {VP_CURRENCY_ID: 1000},
+                    "IsSeen": False,
                 }
-            ]
+            ],
+            "BonusStoreRemainingDurationInSeconds": 86400,
         }
     }
     inventory = {
@@ -63,5 +71,16 @@ def test_extracts_night_market_and_inventory_ids() -> None:
 
     assert extract_night_market_offer_ids(raw) == ["skin-night"]
     assert extract_prices(raw)["skin-night"] == 1000
+    offers, seconds = extract_night_market_offers(raw)
+    assert seconds == 86400
+    assert offers == [
+        {
+            "item_id": "skin-night",
+            "price": 1000,
+            "original_price": 1775,
+            "discount_percent": 36,
+            "is_seen": False,
+            "bonus_offer_id": "bonus-offer",
+        }
+    ]
     assert inventory_item_ids(inventory) == {"skin-owned", "skin-night"}
-
