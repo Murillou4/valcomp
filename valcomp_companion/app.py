@@ -58,8 +58,8 @@ class ValcompCompanionWindow(QMainWindow):
         self._syncing_code = False
 
         self.setWindowTitle("Valcomp Companion")
-        self.setMinimumSize(480, 620)
-        self.resize(520, 680)
+        self.setMinimumSize(520, 640)
+        self.resize(540, 700)
         self.setObjectName("RootWindow")
 
         root = QWidget()
@@ -99,32 +99,14 @@ class ValcompCompanionWindow(QMainWindow):
         description.setWordWrap(True)
         form_layout.addWidget(description)
 
-        steps = QFrame()
-        steps.setObjectName("StepsPanel")
-        steps_layout = QVBoxLayout(steps)
-        steps_layout.setContentsMargins(14, 14, 14, 14)
-        steps_layout.setSpacing(10)
-        steps_layout.addWidget(
-            step_row(
-                "1",
-                "Abra o Riot Client ou o VALORANT",
-                "Entre na sua conta Riot neste PC e deixe o cliente aberto.",
-            )
+        steps = QLabel(
+            "1. Abra o Riot Client ou o VALORANT e deixe sua conta logada.\n"
+            "2. No celular, abra o Valcomp e toque em Vincular.\n"
+            "3. Gere o codigo de 6 numeros, digite abaixo e clique em vincular."
         )
-        steps_layout.addWidget(
-            step_row(
-                "2",
-                "No celular, toque em Vincular",
-                "Gere um codigo de 6 numeros no app Valcomp.",
-            )
-        )
-        steps_layout.addWidget(
-            step_row(
-                "3",
-                "Cole o codigo aqui",
-                "Clique em vincular e espere a confirmacao.",
-            )
-        )
+        steps.setObjectName("StepsText")
+        steps.setWordWrap(True)
+        steps.setMinimumHeight(118)
         form_layout.addWidget(steps)
 
         self.status = QLabel("Detectando sessao Riot...")
@@ -135,13 +117,14 @@ class ValcompCompanionWindow(QMainWindow):
         self.code_input = QLineEdit()
         self.code_input.setObjectName("CodeInput")
         self.code_input.setMaxLength(6)
+        self.code_input.setFixedHeight(66)
         self.code_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.code_input.setPlaceholderText("123456")
+        self.code_input.setPlaceholderText("000000")
         self.code_input.textChanged.connect(self._sanitize_code)
         self.code_input.textChanged.connect(self._sync_buttons)
         form_layout.addWidget(
             field_block(
-                "Codigo que apareceu no app",
+                "DIGITE O CODIGO AQUI",
                 self.code_input,
                 "No celular: aba Vincular > Gerar codigo de vinculo.",
             )
@@ -167,6 +150,7 @@ class ValcompCompanionWindow(QMainWindow):
 
         self.backend_input = QLineEdit(DEFAULT_BACKEND_URL)
         self.backend_input.setObjectName("Input")
+        self.backend_input.setFixedHeight(48)
         self.backend_input.setPlaceholderText("https://valcomp-api-cda2.fly.dev")
         self.backend_wrapper = field_block(
             "Servidor Valcomp",
@@ -299,33 +283,6 @@ class ValcompCompanionWindow(QMainWindow):
         )
 
 
-def step_row(number: str, title: str, body: str) -> QWidget:
-    wrapper = QWidget()
-    layout = QHBoxLayout(wrapper)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(10)
-
-    badge = QLabel(number)
-    badge.setObjectName("StepBadge")
-    badge.setFixedSize(28, 28)
-    badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignTop)
-
-    text = QWidget()
-    text_layout = QVBoxLayout(text)
-    text_layout.setContentsMargins(0, 0, 0, 0)
-    text_layout.setSpacing(2)
-    title_label = QLabel(title)
-    title_label.setObjectName("StepTitle")
-    body_label = QLabel(body)
-    body_label.setObjectName("StepBody")
-    body_label.setWordWrap(True)
-    text_layout.addWidget(title_label)
-    text_layout.addWidget(body_label)
-    layout.addWidget(text, 1)
-    return wrapper
-
-
 def field_block(title: str, widget: QWidget, helper: str = "") -> QWidget:
     wrapper = QWidget()
     layout = QVBoxLayout(wrapper)
@@ -365,12 +322,16 @@ QFrame#FormPanel {
     border: 1px solid #38264D;
     border-radius: 28px;
 }
-QFrame#StepsPanel {
+QLabel#StepsText {
+    color: #F8F1FF;
     background: #100D18;
     border: 1px solid #2F2142;
     border-radius: 18px;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-weight: 700;
 }
-QLabel#Body, QLabel#Hint, QLabel#FieldHelper, QLabel#StepBody {
+QLabel#Body, QLabel#Hint, QLabel#FieldHelper {
     color: #B8A9C8;
     font-size: 14px;
     line-height: 20px;
@@ -391,18 +352,6 @@ QLabel#FieldLabel {
     color: #F8F1FF;
     font-size: 13px;
     font-weight: 700;
-}
-QLabel#StepBadge {
-    color: #0B0911;
-    background: #FF4655;
-    border-radius: 14px;
-    font-size: 13px;
-    font-weight: 900;
-}
-QLabel#StepTitle {
-    color: #F8F1FF;
-    font-size: 14px;
-    font-weight: 800;
 }
 QLabel#StatusNeutral, QLabel#StatusSuccess, QLabel#StatusWarning {
     border-radius: 16px;
@@ -436,9 +385,13 @@ QLineEdit#Input:focus, QLineEdit#CodeInput:focus {
     border: 1px solid #FF4655;
 }
 QLineEdit#CodeInput {
-    font-size: 28px;
+    background: #090711;
+    border: 2px solid #FF4655;
+    border-radius: 20px;
+    font-size: 32px;
     font-weight: 900;
-    letter-spacing: 8px;
+    letter-spacing: 12px;
+    padding: 0 18px;
 }
 QPushButton#PrimaryButton, QPushButton#SecondaryButton, QPushButton#LinkButton {
     border: 0;
