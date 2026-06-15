@@ -19,6 +19,22 @@ let mainWindow = null;
 let riotPayload = null;
 let logFile = null;
 
+function jwtTiming(token) {
+  try {
+    const [, payload] = String(token || "").split(".");
+    if (!payload) return { secondsLeft: 0, expiresAt: "" };
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(Buffer.from(normalized, "base64").toString("utf8"));
+    const expiresAt = Number(decoded.exp || 0);
+    return {
+      secondsLeft: Math.floor(expiresAt - Date.now() / 1000),
+      expiresAt: expiresAt ? new Date(expiresAt * 1000).toISOString() : "",
+    };
+  } catch {
+    return { secondsLeft: 0, expiresAt: "" };
+  }
+}
+
 function sanitize(value, key = "", depth = 0) {
   if (depth > 5) return "[MAX_DEPTH]";
   const lowerKey = String(key).toLowerCase();
@@ -288,6 +304,16 @@ async function detectRiotSession() {
   if (!region || !shard) {
     throw new Error("Não foi possível identificar a região da sua conta Riot.");
   }
+  const timing = jwtTiming(accessToken);
+  if (timing.secondsLeft < 300) {
+    logEvent("warning", "riot_detection_expired_token", {
+      seconds_left: timing.secondsLeft,
+      expires_at: timing.expiresAt,
+    });
+    throw new Error(
+      "A sessão local da Riot está expirada. Feche e abra o Riot Client ou entre na tela inicial do VALORANT, depois clique em Detectar novamente.",
+    );
+  }
   riotPayload = {
     ssid,
     cookies: ssid ? { ssid } : {},
@@ -312,6 +338,7 @@ async function detectRiotSession() {
     region: region.toUpperCase(),
     shard: shard.toUpperCase(),
     hasSsid: Boolean(ssid),
+    secondsLeft: timing.secondsLeft,
   };
 }
 

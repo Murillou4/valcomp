@@ -67,7 +67,7 @@ async function detect() {
     detected = true;
     const data = result.data;
     const refreshHint = data.hasSsid
-      ? "A sessão está pronta para continuar."
+      ? `A sessão está pronta para continuar. Validade: ${Math.floor(data.secondsLeft / 60)} min.`
       : "A conta foi encontrada, mas talvez seja preciso vincular novamente no futuro.";
     setStatus(
       data.hasSsid ? "success" : "warning",

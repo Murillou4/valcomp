@@ -329,9 +329,9 @@ class _LinkScreenState extends State<LinkScreen> {
       } else if (manual) {
         setState(() {
           _linkError =
-              'Ainda não encontrei o vínculo. Confirme se o Companion mostrou sucesso e tente de novo.';
+              'Ainda não encontrei uma sessão Riot válida. Confirme se o Companion mostrou sucesso e tente de novo.';
           _linkErrorDetails =
-              'GET /me ainda não retornou riot_account para o usuário autenticado.';
+              'GET /me ou GET /valorant/store/daily ainda não confirmou uma sessão Riot utilizável.';
         });
       }
     } on Object catch (error) {
@@ -341,7 +341,7 @@ class _LinkScreenState extends State<LinkScreen> {
         setState(() {
           _linkError = state.error.isNotEmpty
               ? state.error
-              : 'Não consegui verificar agora. Tente novamente em alguns segundos.';
+              : 'Não consegui validar a sessão Riot agora. Detecte novamente no Companion e tente outro código.';
           _linkErrorDetails = state.errorDetails.isNotEmpty
               ? state.errorDetails
               : error.toString();

@@ -37,7 +37,13 @@ from .errors import BackendError, RelinkRequiredError, RiotRequestError, Unautho
 from .notifications import PushClient, StoreAlertService
 from .player import normalize_match_details, normalize_player_summary
 from .repository import Repository, build_repository
-from .riot import REGION_TO_SHARD, RiotAuthService, RiotRemoteClient, RiotSession
+from .riot import (
+    REGION_TO_SHARD,
+    RiotAuthService,
+    RiotRemoteClient,
+    RiotSession,
+    access_token_needs_refresh,
+)
 from .schemas import (
     AuthSessionResponse,
     AuthUser,
@@ -938,6 +944,10 @@ async def normalize_link_payload(
         payload = await svc.riot_auth.refresh_payload(payload)
     if not payload.puuid or not payload.region or not payload.shard:
         raise RelinkRequiredError("Companion did not send PUUID, region and shard.")
+    if payload.access_token and access_token_needs_refresh(payload.access_token, leeway_seconds=300):
+        raise RelinkRequiredError(
+            "Companion sent an expired Riot token. Detect Riot again before linking."
+        )
     return payload
 
 

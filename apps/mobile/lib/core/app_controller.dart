@@ -252,6 +252,8 @@ class AppController extends ChangeNotifier {
       me = MeData.fromJson(await api.get('/me'));
       final linkedNow = me?.riotAccount != null;
       if (linkedNow) {
+        store = DailyStore.fromJson(await api.get('/valorant/store/daily'));
+        nightMarket = NightMarket.fromDaily(store!);
         relinkRequired = false;
         linkCode = '';
         linkExpiresAt = null;
@@ -269,6 +271,7 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       return linkedNow;
     } on ApiException catch (exception) {
+      if (exception.relinkRequired) relinkRequired = true;
       error = exception.userMessage;
       errorDetails = exception.fullDetails;
       notifyListeners();

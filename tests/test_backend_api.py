@@ -1,7 +1,8 @@
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import jwt
 from fastapi.testclient import TestClient
 
 from ares_backend.app import create_app
@@ -396,6 +397,36 @@ def test_link_start_complete_and_me_flow() -> None:
     assert complete.json()["riot_account"]["puuid"] == "puuid-123"
     me = client.get("/me", headers=auth_headers())
     assert me.json()["riot_account"]["game_name"] == "Player"
+
+
+def test_link_complete_rejects_expired_riot_access_token() -> None:
+    client, _, _, _ = make_client()
+    expired_token = jwt.encode(
+        {"exp": datetime.now(UTC) - timedelta(minutes=1)},
+        "unused-test-key",
+        algorithm="HS256",
+    )
+
+    start = client.post("/riot/link/start", headers=auth_headers())
+    assert start.status_code == 200
+
+    complete = client.post(
+        "/riot/link/complete",
+        json={
+            "link_code": start.json()["link_code"],
+            "riot": {
+                "access_token": expired_token,
+                "entitlement_token": "entitlement",
+                "puuid": "puuid-123",
+                "region": "br",
+                "shard": "na",
+                "client_version": "release-test",
+            },
+        },
+    )
+
+    assert complete.status_code == 409
+    assert complete.json()["error"]["code"] == "relink_required"
 
 
 def test_daily_store_wallet_items_and_status_routes() -> None:

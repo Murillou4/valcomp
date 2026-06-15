@@ -1,6 +1,6 @@
 {
   "name": "valcomp-companion",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Companion Windows do Valcomp para vincular uma sessão Riot local.",
   "main": "src/main.js",
   "author": "Valcomp",
