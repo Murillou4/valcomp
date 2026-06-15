@@ -3,8 +3,20 @@
 
 create extension if not exists pgcrypto;
 
+create table if not exists public.app_users (
+  user_id uuid primary key default gen_random_uuid(),
+  email text not null,
+  password_hash text not null,
+  display_name text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists app_users_email_lower_idx
+  on public.app_users (lower(email));
+
 create table if not exists public.profiles (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  user_id uuid primary key,
   display_name text not null default '',
   avatar_url text not null default '',
   preferences jsonb not null default '{}'::jsonb,
@@ -13,7 +25,7 @@ create table if not exists public.profiles (
 );
 
 create table if not exists public.riot_accounts (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  user_id uuid primary key,
   puuid text not null,
   game_name text not null default '',
   tag_line text not null default '',
@@ -24,7 +36,7 @@ create table if not exists public.riot_accounts (
 );
 
 create table if not exists public.riot_credentials (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  user_id uuid primary key,
   encrypted_payload text not null,
   last_refresh_at timestamptz,
   expires_hint timestamptz,
@@ -33,13 +45,13 @@ create table if not exists public.riot_credentials (
 
 create table if not exists public.link_codes (
   link_code text primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   expires_at timestamptz not null,
   created_at timestamptz not null default now()
 );
 
 create table if not exists public.store_snapshots (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  user_id uuid primary key,
   payload jsonb not null,
   updated_at timestamptz not null default now()
 );
@@ -54,7 +66,7 @@ create table if not exists public.item_cache (
 
 create table if not exists public.push_devices (
   device_id text primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   expo_push_token text not null,
   masked_token text not null default '',
   platform text not null default 'unknown',
@@ -66,7 +78,7 @@ create table if not exists public.push_devices (
 );
 
 create table if not exists public.skin_watches (
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   item_id text not null,
   item_name text not null default '',
   display_icon text not null default '',
@@ -79,7 +91,7 @@ create table if not exists public.skin_watches (
 
 create table if not exists public.notification_deliveries (
   delivery_key text primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   item_id text not null,
   item_name text not null default '',
   source text not null default 'daily_store',
@@ -89,6 +101,16 @@ create table if not exists public.notification_deliveries (
   error text not null default '',
   sent_at timestamptz not null default now()
 );
+
+alter table public.profiles drop constraint if exists profiles_user_id_fkey;
+alter table public.riot_accounts drop constraint if exists riot_accounts_user_id_fkey;
+alter table public.riot_credentials drop constraint if exists riot_credentials_user_id_fkey;
+alter table public.link_codes drop constraint if exists link_codes_user_id_fkey;
+alter table public.store_snapshots drop constraint if exists store_snapshots_user_id_fkey;
+alter table public.push_devices drop constraint if exists push_devices_user_id_fkey;
+alter table public.skin_watches drop constraint if exists skin_watches_user_id_fkey;
+alter table public.notification_deliveries
+  drop constraint if exists notification_deliveries_user_id_fkey;
 
 create index if not exists item_cache_category_item_id_idx
   on public.item_cache(category, item_id);

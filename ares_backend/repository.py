@@ -3,6 +3,7 @@ from __future__ import annotations
 import secrets
 import json
 import ssl
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
@@ -20,7 +21,23 @@ from .schemas import (
 from .settings import BackendSettings
 
 
+@dataclass(slots=True)
+class AppUserRecord:
+    user_id: str
+    email: str
+    password_hash: str
+    display_name: str = ""
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
 class Repository(Protocol):
+    async def ensure_schema(self) -> None: ...
+    async def create_app_user(
+        self, email: str, password_hash: str, display_name: str = ""
+    ) -> AppUserRecord: ...
+    async def get_app_user_by_email(self, email: str) -> AppUserRecord | None: ...
+    async def get_app_user_by_id(self, user_id: str) -> AppUserRecord | None: ...
     async def get_profile(self, user_id: str) -> Profile | None: ...
     async def upsert_profile(self, profile: Profile) -> Profile: ...
     async def get_riot_account(self, user_id: str) -> RiotAccount | None: ...
@@ -60,6 +77,38 @@ class InMemoryRepository:
         self.push_devices: dict[str, PushDevice] = {}
         self.skin_watches: dict[tuple[str, str], SkinWatch] = {}
         self.notification_deliveries: dict[str, NotificationDelivery] = {}
+        self.app_users_by_id: dict[str, AppUserRecord] = {}
+        self.app_user_ids_by_email: dict[str, str] = {}
+
+    async def ensure_schema(self) -> None:
+        return None
+
+    async def create_app_user(
+        self, email: str, password_hash: str, display_name: str = ""
+    ) -> AppUserRecord:
+        email_key = email.strip().lower()
+        if email_key in self.app_user_ids_by_email:
+            raise ValueError("app_user_exists")
+        user_id = secrets.token_hex(16)
+        now = datetime.now(UTC)
+        record = AppUserRecord(
+            user_id=user_id,
+            email=email_key,
+            password_hash=password_hash,
+            display_name=display_name,
+            created_at=now,
+            updated_at=now,
+        )
+        self.app_users_by_id[user_id] = record
+        self.app_user_ids_by_email[email_key] = user_id
+        return record
+
+    async def get_app_user_by_email(self, email: str) -> AppUserRecord | None:
+        user_id = self.app_user_ids_by_email.get(email.strip().lower())
+        return self.app_users_by_id.get(user_id or "")
+
+    async def get_app_user_by_id(self, user_id: str) -> AppUserRecord | None:
+        return self.app_users_by_id.get(user_id)
 
     async def get_profile(self, user_id: str) -> Profile | None:
         return self.profiles.get(user_id)
@@ -371,6 +420,7 @@ class PostgresRepository:
             raise ValueError("DATABASE_URL is required.")
         self.settings = settings
         self.pool: asyncpg.Pool | None = None
+        self._schema_ready = False
 
     async def _pool(self) -> asyncpg.Pool:
         if self.pool is None:
@@ -382,11 +432,78 @@ class PostgresRepository:
             )
         return self.pool
 
+    async def ensure_schema(self) -> None:
+        if self._schema_ready:
+            return
+        await self._execute(
+            """
+            create extension if not exists pgcrypto;
+
+            create table if not exists public.app_users (
+              user_id uuid primary key default gen_random_uuid(),
+              email text not null,
+              password_hash text not null,
+              display_name text not null default '',
+              created_at timestamptz not null default now(),
+              updated_at timestamptz not null default now()
+            );
+
+            create unique index if not exists app_users_email_lower_idx
+              on public.app_users (lower(email));
+
+            alter table public.profiles drop constraint if exists profiles_user_id_fkey;
+            alter table public.riot_accounts drop constraint if exists riot_accounts_user_id_fkey;
+            alter table public.riot_credentials drop constraint if exists riot_credentials_user_id_fkey;
+            alter table public.link_codes drop constraint if exists link_codes_user_id_fkey;
+            alter table public.store_snapshots drop constraint if exists store_snapshots_user_id_fkey;
+            alter table public.push_devices drop constraint if exists push_devices_user_id_fkey;
+            alter table public.skin_watches drop constraint if exists skin_watches_user_id_fkey;
+            alter table public.notification_deliveries
+              drop constraint if exists notification_deliveries_user_id_fkey;
+            """
+        )
+        self._schema_ready = True
+
+    async def create_app_user(
+        self, email: str, password_hash: str, display_name: str = ""
+    ) -> AppUserRecord:
+        await self.ensure_schema()
+        try:
+            row = await self._fetchrow(
+                """
+                insert into public.app_users (email, password_hash, display_name, updated_at)
+                values ($1, $2, $3, now())
+                returning *
+                """,
+                email.strip().lower(),
+                password_hash,
+                display_name,
+            )
+        except asyncpg.UniqueViolationError as exc:
+            raise ValueError("app_user_exists") from exc
+        assert row is not None
+        return _app_user_from_row(row)
+
+    async def get_app_user_by_email(self, email: str) -> AppUserRecord | None:
+        await self.ensure_schema()
+        row = await self._fetchrow(
+            "select * from public.app_users where lower(email)=lower($1) limit 1",
+            email.strip().lower(),
+        )
+        return _app_user_from_row(row) if row else None
+
+    async def get_app_user_by_id(self, user_id: str) -> AppUserRecord | None:
+        await self.ensure_schema()
+        row = await self._fetchrow("select * from public.app_users where user_id=$1", user_id)
+        return _app_user_from_row(row) if row else None
+
     async def get_profile(self, user_id: str) -> Profile | None:
+        await self.ensure_schema()
         row = await self._fetchrow("select * from public.profiles where user_id=$1", user_id)
         return _profile_from_row(row) if row else None
 
     async def upsert_profile(self, profile: Profile) -> Profile:
+        await self.ensure_schema()
         row = await self._fetchrow(
             """
             insert into public.profiles (user_id, display_name, avatar_url, preferences, updated_at)
@@ -407,10 +524,12 @@ class PostgresRepository:
         return _profile_from_row(row)
 
     async def get_riot_account(self, user_id: str) -> RiotAccount | None:
+        await self.ensure_schema()
         row = await self._fetchrow("select * from public.riot_accounts where user_id=$1", user_id)
         return _riot_account_from_row(row) if row else None
 
     async def upsert_riot_account(self, account: RiotAccount) -> RiotAccount:
+        await self.ensure_schema()
         row = await self._fetchrow(
             """
             insert into public.riot_accounts
@@ -439,10 +558,12 @@ class PostgresRepository:
         return _riot_account_from_row(row)
 
     async def get_riot_credentials(self, user_id: str) -> RiotCredentialRecord | None:
+        await self.ensure_schema()
         row = await self._fetchrow("select * from public.riot_credentials where user_id=$1", user_id)
         return _riot_credentials_from_row(row) if row else None
 
     async def upsert_riot_credentials(self, record: RiotCredentialRecord) -> RiotCredentialRecord:
+        await self.ensure_schema()
         row = await self._fetchrow(
             """
             insert into public.riot_credentials
@@ -726,6 +847,18 @@ def _stringify_user_id(data: dict[str, Any]) -> dict[str, Any]:
     if "user_id" in data and data["user_id"] is not None:
         data["user_id"] = str(data["user_id"])
     return data
+
+
+def _app_user_from_row(row: Any) -> AppUserRecord:
+    data = _stringify_user_id(_row_dict(row))
+    return AppUserRecord(
+        user_id=str(data.get("user_id") or ""),
+        email=str(data.get("email") or ""),
+        password_hash=str(data.get("password_hash") or ""),
+        display_name=str(data.get("display_name") or ""),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+    )
 
 
 def _profile_from_row(row: Any) -> Profile:

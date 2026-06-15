@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated, Any
@@ -89,6 +90,13 @@ def create_app(
         executor=EndpointExecutor(),
     )
 
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        ensure_schema = getattr(services.repo, "ensure_schema", None)
+        if ensure_schema:
+            await ensure_schema()
+        yield
+
     app = FastAPI(
         title=settings.app_name,
         version="0.1.0",
@@ -96,6 +104,7 @@ def create_app(
             "Backend hosted for a Valorant mobile app. Uses Supabase auth and "
             "unofficial Riot client endpoints without a Riot Developer API key."
         ),
+        lifespan=lifespan,
     )
     app.state.services = services
 
@@ -129,7 +138,7 @@ def create_app(
         svc: Annotated[AppServices, Depends(get_services)],
     ) -> AuthSessionResponse:
         result = await svc.auth.sign_up_with_password(
-            payload.email, payload.password, payload.display_name
+            payload.email, payload.password, payload.display_name, svc.repo
         )
         result.profile = await ensure_profile(result.user, svc.repo, payload.display_name)
         return result
@@ -139,7 +148,7 @@ def create_app(
         payload: PasswordAuthRequest,
         svc: Annotated[AppServices, Depends(get_services)],
     ) -> AuthSessionResponse:
-        result = await svc.auth.sign_in_with_password(payload.email, payload.password)
+        result = await svc.auth.sign_in_with_password(payload.email, payload.password, svc.repo)
         result.profile = await ensure_profile(result.user, svc.repo)
         return result
 
@@ -148,7 +157,7 @@ def create_app(
         payload: RefreshTokenRequest,
         svc: Annotated[AppServices, Depends(get_services)],
     ) -> AuthSessionResponse:
-        result = await svc.auth.refresh_password_session(payload.refresh_token)
+        result = await svc.auth.refresh_password_session(payload.refresh_token, svc.repo)
         result.profile = await ensure_profile(result.user, svc.repo)
         return result
 

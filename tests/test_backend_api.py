@@ -185,7 +185,9 @@ def test_password_auth_signup_login_and_session_verify() -> None:
     )
     assert signup.status_code == 200
     assert signup.json()["user"]["email"] == "player@example.com"
+    assert signup.json()["email_confirmation_required"] is False
     token = signup.json()["session"]["access_token"]
+    refresh_token = signup.json()["session"]["refresh_token"]
 
     verify = client.post("/auth/session/verify", headers={"Authorization": f"Bearer {token}"})
     assert verify.status_code == 200
@@ -196,7 +198,11 @@ def test_password_auth_signup_login_and_session_verify() -> None:
         json={"email": "player@example.com", "password": "secret123"},
     )
     assert login.status_code == 200
-    assert login.json()["session"]["access_token"].startswith("dev:")
+    assert login.json()["session"]["access_token"] != token
+
+    refresh = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    assert refresh.status_code == 200
+    assert refresh.json()["session"]["access_token"]
 
 
 def test_link_start_complete_and_me_flow() -> None:
