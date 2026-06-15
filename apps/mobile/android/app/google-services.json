@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "219372530228",
+    "project_id": "valorant-dc041",
+    "storage_bucket": "valorant-dc041.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:219372530228:android:cc08370323007a7824b861",
+        "android_client_info": {
+          "package_name": "com.cda2.valcomp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1QD3cZY2HL8IuhA1IFEQcNRYKs2IvBhY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

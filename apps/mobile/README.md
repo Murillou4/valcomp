@@ -25,18 +25,21 @@ flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000
 
 ## Push Android
 
-O app so inicializa o Firebase quando todos os valores forem fornecidos:
+O app Android esta registrado no projeto Firebase `valorant-dc041`. A
+configuracao publica gerada pelo FlutterFire fica em:
 
-```powershell
-flutter build apk --release `
-  --dart-define=FIREBASE_API_KEY=... `
-  --dart-define=FIREBASE_APP_ID=... `
-  --dart-define=FIREBASE_MESSAGING_SENDER_ID=... `
-  --dart-define=FIREBASE_PROJECT_ID=...
-```
+- `android/app/google-services.json`
+- `lib/firebase_options.dart`
 
-Sem esses valores, o restante do app funciona normalmente, mas o dispositivo
-nao registra um token FCM.
+Nao sao necessarios `--dart-define` para o Firebase. Depois do login, o app
+solicita permissao do Android, registra o token FCM no backend e acompanha
+automaticamente futuras trocas desse token.
+
+A tela `Alertas` permite enviar uma notificacao de teste para os aparelhos
+registrados do proprio usuario.
+
+A chave privada da Service Account pertence somente ao backend e fica fora do
+Git.
 
 ## Build de release
 

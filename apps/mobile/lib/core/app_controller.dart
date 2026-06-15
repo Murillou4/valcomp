@@ -224,6 +224,33 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String> sendTestNotification() async {
+    loading = true;
+    error = '';
+    notifyListeners();
+    try {
+      await _pushService.register(api);
+      final response = await api.post('/notifications/test');
+      final sentCount = (response['sent_count'] as num?)?.toInt() ?? 0;
+      final deviceCount = (response['device_count'] as num?)?.toInt() ?? 0;
+      if (sentCount > 0) {
+        return 'Notificação enviada. Ela deve aparecer em alguns segundos.';
+      }
+      if (deviceCount == 0) {
+        return 'Nenhum aparelho registrado. Permita as notificações e tente novamente.';
+      }
+      return 'O Firebase não conseguiu entregar o teste. Tente novamente em instantes.';
+    } on ApiException catch (exception) {
+      error = exception.message;
+      return exception.message;
+    } on Object {
+      return 'Não foi possível registrar as notificações neste aparelho.';
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> updateProfile(String displayName) async {
     await api.patch('/me', body: {'display_name': displayName.trim()});
     me = MeData.fromJson(await api.get('/me'));

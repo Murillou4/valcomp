@@ -149,6 +149,46 @@ class StoreAlertService:
         )
         return await self.repo.upsert_skin_watch(watch)
 
+    async def send_test_notification(self, user_id: str) -> dict[str, Any]:
+        devices = [
+            device
+            for device in await self.repo.list_push_devices(user_id)
+            if device.enabled and device.provider == "fcm" and device.push_token
+        ]
+        if not devices:
+            return {
+                "device_count": 0,
+                "sent_count": 0,
+                "failed_count": 0,
+                "errors": [],
+            }
+        results = await self.push.send(
+            [
+                {
+                    "token": device.push_token,
+                    "title": "Notificações ativadas",
+                    "body": "Pronto. O Valcomp pode avisar quando uma skin desejada aparecer.",
+                    "data": {
+                        "type": "push_test",
+                        "userId": user_id,
+                    },
+                }
+                for device in devices
+            ]
+        )
+        errors = [
+            str(result.get("message") or "FCM delivery failed.")
+            for result in results
+            if result.get("status") != "ok"
+        ]
+        sent_count = sum(result.get("status") == "ok" for result in results)
+        return {
+            "device_count": len(devices),
+            "sent_count": sent_count,
+            "failed_count": len(errors),
+            "errors": errors,
+        }
+
     async def check_daily_store(
         self, user_id: str, daily: StoreDailyResponse
     ) -> AlertCheckResponse:
