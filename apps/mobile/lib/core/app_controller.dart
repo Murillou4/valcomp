@@ -229,6 +229,8 @@ class AppController extends ChangeNotifier {
 
   Future<void> generateLinkCode() async {
     loading = true;
+    error = '';
+    errorDetails = '';
     notifyListeners();
     try {
       final response = await api.post('/riot/link/start');
@@ -242,6 +244,42 @@ class AppController extends ChangeNotifier {
     } finally {
       loading = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> checkRiotLink() async {
+    try {
+      me = MeData.fromJson(await api.get('/me'));
+      final linkedNow = me?.riotAccount != null;
+      if (linkedNow) {
+        relinkRequired = false;
+        linkCode = '';
+        linkExpiresAt = null;
+        error = '';
+        errorDetails = '';
+      }
+      await DiagnosticLog.instance.record(
+        level: 'info',
+        category: 'link',
+        message: linkedNow
+            ? 'Vínculo Riot confirmado no mobile.'
+            : 'Vínculo Riot ainda não confirmado.',
+        context: {'linked': linkedNow},
+      );
+      notifyListeners();
+      return linkedNow;
+    } on ApiException catch (exception) {
+      error = exception.userMessage;
+      errorDetails = exception.fullDetails;
+      notifyListeners();
+      await DiagnosticLog.instance.record(
+        level: 'warning',
+        category: 'link',
+        message: 'Falha ao verificar vínculo Riot.',
+        context: {'error': exception.userMessage},
+        stackTrace: exception.fullDetails,
+      );
+      rethrow;
     }
   }
 

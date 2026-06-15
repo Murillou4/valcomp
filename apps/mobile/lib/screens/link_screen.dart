@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -15,10 +17,33 @@ class LinkScreen extends StatefulWidget {
 
 class _LinkScreenState extends State<LinkScreen> {
   bool _advanced = false;
+  bool _checking = false;
+  bool _successHandled = false;
+  String _linkError = '';
+  String _linkErrorDetails = '';
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (context.read<AppController>().linkCode.isNotEmpty) {
+        _startPolling();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppController>();
+    final busy = state.loading || _checking;
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -109,6 +134,14 @@ class _LinkScreenState extends State<LinkScreen> {
                         ),
                         child: Column(
                           children: [
+                            if (busy) ...[
+                              const LinearProgressIndicator(
+                                minHeight: 3,
+                                color: ValcompColors.red,
+                                backgroundColor: ValcompColors.border,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                             if (state.linkCode.isEmpty)
                               const Text(
                                 'Seu código aparecerá aqui',
@@ -151,9 +184,18 @@ class _LinkScreenState extends State<LinkScreen> {
                             ),
                             const SizedBox(height: 18),
                             FilledButton(
-                              onPressed: state.loading
+                              onPressed: busy
                                   ? null
-                                  : state.generateLinkCode,
+                                  : () async {
+                                      await state.generateLinkCode();
+                                      if (!context.mounted) return;
+                                      if (state.linkCode.isNotEmpty) {
+                                        _linkError = '';
+                                        _linkErrorDetails = '';
+                                        _startPolling();
+                                      }
+                                      setState(() {});
+                                    },
                               child: Text(
                                 state.linkCode.isEmpty
                                     ? 'Gerar código de vínculo'
@@ -163,6 +205,17 @@ class _LinkScreenState extends State<LinkScreen> {
                           ],
                         ),
                       ),
+                      if (state.linkCode.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _AutoCheckNotice(checking: _checking),
+                      ],
+                      if (_linkError.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        ErrorNotice(
+                          message: _linkError,
+                          details: _linkErrorDetails,
+                        ),
+                      ],
                       SizedBox(height: compact ? 14 : 20),
                       _Step(
                         number: '1',
@@ -203,12 +256,9 @@ class _LinkScreenState extends State<LinkScreen> {
                         ),
                       const SizedBox(height: 4),
                       OutlinedButton(
-                        onPressed: () async {
-                          await state.refreshAll();
-                          if (context.mounted && state.linked) {
-                            Navigator.pop(context);
-                          }
-                        },
+                        onPressed: busy
+                            ? null
+                            : () => _verifyLinked(manual: true),
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
                           side: const BorderSide(color: ValcompColors.border),
@@ -216,7 +266,16 @@ class _LinkScreenState extends State<LinkScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text('Já vinculei, verificar agora'),
+                        child: _checking
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.3,
+                                  color: ValcompColors.text,
+                                ),
+                              )
+                            : const Text('Já vinculei, verificar agora'),
                       ),
                     ],
                   ),
@@ -238,6 +297,141 @@ class _LinkScreenState extends State<LinkScreen> {
                   ),
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _verifyLinked(manual: false);
+    });
+    unawaited(_verifyLinked(manual: false));
+  }
+
+  Future<void> _verifyLinked({required bool manual}) async {
+    if (_checking || _successHandled) return;
+    setState(() {
+      _checking = true;
+      if (manual) {
+        _linkError = '';
+        _linkErrorDetails = '';
+      }
+    });
+    try {
+      final linked = await context.read<AppController>().checkRiotLink();
+      if (!mounted) return;
+      if (linked) {
+        _finishWithSuccess();
+      } else if (manual) {
+        setState(() {
+          _linkError =
+              'Ainda não encontrei o vínculo. Confirme se o Companion mostrou sucesso e tente de novo.';
+          _linkErrorDetails =
+              'GET /me ainda não retornou riot_account para o usuário autenticado.';
+        });
+      }
+    } on Object catch (error) {
+      if (!mounted) return;
+      if (manual) {
+        final state = context.read<AppController>();
+        setState(() {
+          _linkError = state.error.isNotEmpty
+              ? state.error
+              : 'Não consegui verificar agora. Tente novamente em alguns segundos.';
+          _linkErrorDetails = state.errorDetails.isNotEmpty
+              ? state.errorDetails
+              : error.toString();
+        });
+      }
+    } finally {
+      if (mounted && !_successHandled) {
+        setState(() => _checking = false);
+      }
+    }
+  }
+
+  void _finishWithSuccess() {
+    if (_successHandled) return;
+    _successHandled = true;
+    _pollTimer?.cancel();
+    final state = context.read<AppController>();
+    state.selectTab(1);
+    unawaited(state.refreshAll(silent: true));
+    final navigator = Navigator.of(context);
+    final rootContext = navigator.context;
+    if (navigator.canPop()) navigator.pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!rootContext.mounted) return;
+      showDialog<void>(
+        context: rootContext,
+        builder: (context) => AlertDialog(
+          backgroundColor: ValcompColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: ValcompColors.border),
+          ),
+          title: const Text('Conta Riot vinculada'),
+          content: const Text(
+            'Pronto. Agora o Valcomp vai buscar sua loja, Mercado Noturno e dados da conta automaticamente.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Ir para Home'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _AutoCheckNotice extends StatelessWidget {
+  const _AutoCheckNotice({required this.checking});
+
+  final bool checking;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: ValcompColors.green.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ValcompColors.green.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        children: [
+          if (checking)
+            const SizedBox(
+              width: 17,
+              height: 17,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                color: ValcompColors.green,
+              ),
+            )
+          else
+            const Icon(
+              Icons.sync_rounded,
+              color: ValcompColors.green,
+              size: 19,
+            ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Assim que o Companion confirmar no PC, eu volto para a Home sozinho.',
+              style: TextStyle(
+                color: ValcompColors.green,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                height: 1.25,
+              ),
             ),
           ),
         ],
