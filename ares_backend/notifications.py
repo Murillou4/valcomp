@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+import base64
 import hashlib
+import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Protocol
 
-import httpx
+import firebase_admin
+from firebase_admin import credentials, messaging
 
 from .assets import ValorantAssetsClient, asset_display_name, asset_icon, asset_tier
 from .repository import Repository
@@ -21,33 +25,76 @@ from .settings import BackendSettings
 from .store import StoreItem
 
 
-class ExpoPushClient:
-    def __init__(self, settings: BackendSettings, client: httpx.AsyncClient | None = None) -> None:
+class PushClient(Protocol):
+    async def send(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]: ...
+
+
+class FirebasePushClient:
+    def __init__(self, settings: BackendSettings) -> None:
         self.settings = settings
-        self.client = client or httpx.AsyncClient(
-            timeout=settings.http_timeout_seconds,
-            trust_env=False,
-            headers={
-                "Accept": "application/json",
-                "Accept-Encoding": "gzip, deflate",
-                "Content-Type": "application/json",
-            },
-        )
+        self._app: firebase_admin.App | None = None
 
     async def send(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not messages:
             return []
-        tickets: list[dict[str, Any]] = []
-        for index in range(0, len(messages), 100):
-            chunk = messages[index : index + 100]
-            response = await self.client.post(self.settings.expo_push_endpoint, json=chunk)
-            response.raise_for_status()
-            data = response.json().get("data", [])
-            if isinstance(data, dict):
-                tickets.append(data)
-            elif isinstance(data, list):
-                tickets.extend(item for item in data if isinstance(item, dict))
-        return tickets
+        if not self.settings.firebase_service_account_json:
+            return [
+                {"status": "error", "message": "FCM is not configured on the backend."}
+                for _ in messages
+            ]
+        return await asyncio.to_thread(self._send_sync, messages)
+
+    def _send_sync(self, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        firebase_messages = [
+            messaging.Message(
+                token=str(payload.get("token") or ""),
+                notification=messaging.Notification(
+                    title=str(payload.get("title") or ""),
+                    body=str(payload.get("body") or ""),
+                    image=payload.get("image") or None,
+                ),
+                data={
+                    str(key): "" if value is None else str(value)
+                    for key, value in (payload.get("data") or {}).items()
+                },
+                android=messaging.AndroidConfig(
+                    priority="high",
+                    notification=messaging.AndroidNotification(
+                        channel_id="skin_alerts",
+                        sound="default",
+                    ),
+                ),
+            )
+            for payload in payloads
+            if payload.get("token")
+        ]
+        response = messaging.send_each(firebase_messages, app=self._firebase_app())
+        return [
+            (
+                {"status": "ok", "id": result.message_id or ""}
+                if result.success
+                else {
+                    "status": "error",
+                    "message": str(result.exception or "FCM delivery failed."),
+                }
+            )
+            for result in response.responses
+        ]
+
+    def _firebase_app(self) -> firebase_admin.App:
+        if self._app is not None:
+            return self._app
+        raw = self.settings.firebase_service_account_json.strip()
+        if not raw.startswith("{"):
+            raw = base64.b64decode(raw).decode("utf-8")
+        service_account = json.loads(raw)
+        project_id = self.settings.firebase_project_id or service_account.get("project_id")
+        self._app = firebase_admin.initialize_app(
+            credentials.Certificate(service_account),
+            {"projectId": project_id} if project_id else None,
+            name="valcomp-backend",
+        )
+        return self._app
 
 
 class StoreAlertService:
@@ -56,22 +103,23 @@ class StoreAlertService:
         settings: BackendSettings,
         repo: Repository,
         assets: ValorantAssetsClient,
-        push: ExpoPushClient | None = None,
+        push: PushClient | None = None,
     ) -> None:
         self.settings = settings
         self.repo = repo
         self.assets = assets
-        self.push = push or ExpoPushClient(settings)
+        self.push = push or FirebasePushClient(settings)
 
     async def register_device(
         self, user_id: str, request: PushDeviceRegisterRequest
     ) -> PushDevice:
         now = datetime.now(UTC)
-        token = request.expo_push_token.strip()
+        token = request.push_token.strip()
         device = PushDevice(
             device_id=push_device_id(token),
             user_id=user_id,
-            expo_push_token=token,
+            push_token=token,
+            provider=request.provider,
             masked_token=mask_push_token(token),
             platform=request.platform,
             device_name=request.device_name.strip(),
@@ -83,13 +131,15 @@ class StoreAlertService:
         return await self.repo.upsert_push_device(device)
 
     async def add_skin_watch(self, user_id: str, item_id: str, *, enabled: bool = True) -> SkinWatch:
-        category, asset = await self.assets.get_item(item_id, self.repo)
+        category, canonical_id, asset = await self.assets.canonical_store_item(
+            item_id, self.repo
+        )
         if not asset or category not in {"skins", "skin-levels", "chromas"}:
             raise ValueError("Item is not a known Valorant skin, level or chroma.")
         now = datetime.now(UTC)
         watch = SkinWatch(
             user_id=user_id,
-            item_id=item_id,
+            item_id=canonical_id,
             item_name=asset_display_name(asset),
             display_icon=asset_icon(asset),
             tier=asset_tier(asset),
@@ -211,10 +261,10 @@ class StoreAlertService:
         body = f"{watch.item_name or item.name} apareceu na {source_label}{price}."
         messages = [
             {
-                "to": device.expo_push_token,
+                "token": device.push_token,
                 "title": title,
                 "body": body,
-                "sound": "default",
+                "image": item.display_icon or None,
                 "data": {
                     "type": "skin_store_match",
                     "userId": user_id,
@@ -224,7 +274,7 @@ class StoreAlertService:
                 },
             }
             for device in devices
-            if device.enabled and device.expo_push_token
+            if device.enabled and device.provider == "fcm" and device.push_token
         ]
         return await self.push.send(messages)
 

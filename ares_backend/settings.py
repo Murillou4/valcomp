@@ -41,7 +41,9 @@ class BackendSettings(BaseSettings):
     store_snapshot_ttl_seconds: int = 300
     allow_unsafe_mutations: bool = False
     job_secret_token: str = ""
-    expo_push_endpoint: str = "https://exp.host/--/api/v2/push/send"
+    valorant_assets_language: str = "pt-BR"
+    firebase_project_id: str = ""
+    firebase_service_account_json: str = ""
 
 
 @lru_cache

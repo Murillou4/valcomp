@@ -3,10 +3,13 @@
   "backend_url": "https://valcomp-api-cda2.fly.dev",
   "mobile": {
     "name": "Valcomp Mobile APK",
+    "framework": "Flutter 3.41.9",
+    "package": "com.cda2.valcomp",
+    "version": "1.0.0",
     "file": "valcomp-mobile.apk",
-    "size_bytes": 103845705,
-    "sha256": "0F88ACE22EFA9A1A87584521724E72894C9055E0E271E9ADF8B65E1299AA0C4B",
-    "eas_build_id": "4af4894f-b4a7-4fc7-9d53-3efaa2dc87e9"
+    "size_bytes": 54327166,
+    "sha256": "E68105975B9F7D12639CE649F96C21F42574C4755B0B03DBE7575408F9BF43DA",
+    "signer_sha256": "C9702855214494288B8356C18077E00A29313C09D930894DCFDCA34B7E5DA11F"
   },
   "desktop": {
     "name": "Valcomp Companion Windows",

@@ -106,6 +106,17 @@ class FakeAssets:
                 return "skins", item
         return "", None
 
+    async def resolve_store_item(
+        self, item_id: str, repo: InMemoryRepository | None = None
+    ) -> tuple[str, dict[str, Any] | None]:
+        return await self.get_item(item_id, repo)
+
+    async def canonical_store_item(
+        self, item_id: str, repo: InMemoryRepository | None = None
+    ) -> tuple[str, str, dict[str, Any] | None]:
+        category, item = await self.get_item(item_id, repo)
+        return category, item_id, item
+
 
 def make_client() -> tuple[TestClient, InMemoryRepository, BackendSettings, FakePushClient]:
     settings = BackendSettings(
@@ -291,15 +302,16 @@ def test_skin_watchlist_sends_daily_store_notification_once() -> None:
         "/notifications/devices",
         headers=auth_headers(),
         json={
-            "expo_push_token": "ExponentPushToken[unit-test-token-123456789]",
+            "push_token": "fcm-unit-test-token-12345678901234567890",
+            "provider": "fcm",
             "platform": "android",
             "device_name": "Pixel test",
             "app_version": "1.0.0",
         },
     )
     assert device.status_code == 200
-    assert "expo_push_token" not in device.json()["device"]
-    assert device.json()["device"]["masked_token"].startswith("ExponentPushT")
+    assert "push_token" not in device.json()["device"]
+    assert device.json()["device"]["masked_token"].startswith("fcm-unit-test-")
 
     watch = client.post(
         "/valorant/skins/watchlist",
@@ -331,7 +343,10 @@ def test_store_alert_job_is_protected_and_runs_watchlists() -> None:
     client.post(
         "/notifications/devices",
         headers=auth_headers(),
-        json={"expo_push_token": "ExponentPushToken[job-token-1234567890]"},
+        json={
+            "push_token": "fcm-job-token-123456789012345678901234",
+            "provider": "fcm",
+        },
     )
     client.post(
         "/valorant/skins/watchlist",

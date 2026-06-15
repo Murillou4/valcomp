@@ -19,7 +19,8 @@ from .assets import ASSET_ENDPOINTS, ValorantAssetsClient
 from .auth import SupabaseAuth
 from .capabilities import classify_endpoint
 from .errors import BackendError, RelinkRequiredError, RiotRequestError, UnauthorizedError
-from .notifications import ExpoPushClient, StoreAlertService
+from .notifications import PushClient, StoreAlertService
+from .player import normalize_player_summary
 from .repository import Repository, build_repository
 from .riot import REGION_TO_SHARD, RiotAuthService, RiotRemoteClient, RiotSession
 from .schemas import (
@@ -69,7 +70,7 @@ def create_app(
     riot_auth: RiotAuthService | None = None,
     riot_client: RiotRemoteClient | None = None,
     assets: ValorantAssetsClient | None = None,
-    push_client: ExpoPushClient | None = None,
+    push_client: PushClient | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     crypto = CryptoService(settings.app_secret_key)
@@ -410,13 +411,28 @@ def create_app(
         category: str,
         _: Annotated[AuthUser, Depends(current_user)],
         svc: Annotated[AppServices, Depends(get_services)],
+        q: str = "",
+        limit: Annotated[int, Query(ge=1, le=5000)] = 5000,
+        offset: Annotated[int, Query(ge=0, le=50000)] = 0,
     ) -> dict[str, Any]:
         if category not in ASSET_ENDPOINTS:
             raise HTTPException(
                 status_code=404,
                 detail={"code": "item_category_not_found", "message": f"Unknown category: {category}"},
             )
-        return {"category": category, "items": await svc.assets.list_items(category, svc.repo)}
+        items = await svc.assets.list_items(category, svc.repo)
+        query = q.strip().lower()
+        if query:
+            items = [
+                item
+                for item in items
+                if query in str(item.get("displayName") or "").lower()
+            ]
+        return {
+            "category": category,
+            "total": len(items),
+            "items": items[offset : offset + limit],
+        }
 
     @app.get("/valorant/items/{item_id}/status")
     async def valorant_item_status(
@@ -489,6 +505,18 @@ def create_app(
         svc: Annotated[AppServices, Depends(get_services)],
     ) -> Any:
         return await svc.riot_client.mmr(await riot_session_for_user(user, svc))
+
+    @app.get("/valorant/player/summary")
+    async def player_summary(
+        user: Annotated[AuthUser, Depends(current_user)],
+        svc: Annotated[AppServices, Depends(get_services)],
+    ) -> dict[str, Any]:
+        session = await riot_session_for_user(user, svc)
+        mmr = await svc.riot_client.mmr(session)
+        matches = await svc.riot_client.match_history(
+            session, start_index=0, end_index=10
+        )
+        return normalize_player_summary(mmr, matches)
 
     @app.get("/valorant/player/matches")
     async def player_matches(
@@ -585,7 +613,7 @@ async def current_user(
 
 
 def public_device(device: Any) -> dict[str, Any]:
-    return device.model_dump(mode="json", exclude={"expo_push_token"})
+    return device.model_dump(mode="json", exclude={"push_token"})
 
 
 def require_job_token(settings: BackendSettings, supplied: str | None) -> None:

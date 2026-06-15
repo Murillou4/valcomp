@@ -21,6 +21,7 @@ ASSET_ENDPOINTS = {
 
 class ValorantAssetsClient:
     def __init__(self, settings: BackendSettings, client: httpx.AsyncClient | None = None) -> None:
+        self.settings = settings
         self.client = client or httpx.AsyncClient(
             base_url="https://valorant-api.com/v1",
             timeout=settings.http_timeout_seconds,
@@ -33,7 +34,10 @@ class ValorantAssetsClient:
             raise ValueError(f"Unknown item category: {category}")
         if category in self._memory:
             return self._memory[category]
-        response = await self.client.get(f"/{ASSET_ENDPOINTS[category]}")
+        response = await self.client.get(
+            f"/{ASSET_ENDPOINTS[category]}",
+            params={"language": self.settings.valorant_assets_language},
+        )
         response.raise_for_status()
         data = response.json().get("data", [])
         items = data if isinstance(data, list) else []
@@ -57,6 +61,46 @@ class ValorantAssetsClient:
                 if str(item.get("uuid", "")).lower() == item_id.lower():
                     return category, item
         return "", None
+
+    async def resolve_store_item(
+        self, item_id: str, repo: Repository | None = None
+    ) -> tuple[str, dict[str, Any] | None]:
+        category, asset = await self.get_item(item_id, repo)
+        if not asset or category not in {"skin-levels", "chromas"}:
+            return category, asset
+
+        relation_key = "levels" if category == "skin-levels" else "chromas"
+        for skin in await self.list_items("skins", repo):
+            related = skin.get(relation_key, [])
+            if not isinstance(related, list):
+                continue
+            if any(
+                isinstance(item, dict)
+                and str(item.get("uuid", "")).lower() == item_id.lower()
+                for item in related
+            ):
+                return category, {
+                    **skin,
+                    **asset,
+                    "contentTierUuid": skin.get("contentTierUuid") or "",
+                    "parentSkinUuid": skin.get("uuid") or "",
+                }
+        return category, asset
+
+    async def canonical_store_item(
+        self, item_id: str, repo: Repository | None = None
+    ) -> tuple[str, str, dict[str, Any] | None]:
+        category, asset = await self.get_item(item_id, repo)
+        if not asset:
+            return category, item_id, None
+        if category == "skins":
+            levels = asset.get("levels", [])
+            if isinstance(levels, list) and levels and isinstance(levels[0], dict):
+                canonical_id = str(levels[0].get("uuid") or item_id)
+                _, merged = await self.resolve_store_item(canonical_id, repo)
+                return "skin-levels", canonical_id, merged or asset
+        _, merged = await self.resolve_store_item(item_id, repo)
+        return category, item_id, merged or asset
 
 
 def asset_display_name(item: dict[str, Any] | None) -> str:

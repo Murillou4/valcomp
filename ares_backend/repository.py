@@ -457,6 +457,14 @@ class PostgresRepository:
             alter table public.link_codes drop constraint if exists link_codes_user_id_fkey;
             alter table public.store_snapshots drop constraint if exists store_snapshots_user_id_fkey;
             alter table public.push_devices drop constraint if exists push_devices_user_id_fkey;
+            alter table public.push_devices add column if not exists push_token text;
+            alter table public.push_devices add column if not exists provider text not null default 'fcm';
+            alter table public.push_devices add column if not exists expo_push_token text;
+            update public.push_devices
+            set push_token = coalesce(nullif(push_token, ''), expo_push_token)
+            where push_token is null or push_token = '';
+            alter table public.push_devices alter column expo_push_token drop not null;
+            alter table public.push_devices alter column push_token set not null;
             alter table public.skin_watches drop constraint if exists skin_watches_user_id_fkey;
             alter table public.notification_deliveries
               drop constraint if exists notification_deliveries_user_id_fkey;
@@ -662,12 +670,13 @@ class PostgresRepository:
         row = await self._fetchrow(
             """
             insert into public.push_devices
-              (device_id, user_id, expo_push_token, masked_token, platform, device_name,
+              (device_id, user_id, push_token, provider, masked_token, platform, device_name,
                app_version, enabled, created_at, updated_at)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
             on conflict (device_id) do update set
               user_id=excluded.user_id,
-              expo_push_token=excluded.expo_push_token,
+              push_token=excluded.push_token,
+              provider=excluded.provider,
               masked_token=excluded.masked_token,
               platform=excluded.platform,
               device_name=excluded.device_name,
@@ -678,7 +687,8 @@ class PostgresRepository:
             """,
             device.device_id,
             device.user_id,
-            device.expo_push_token,
+            device.push_token,
+            device.provider,
             device.masked_token,
             device.platform,
             device.device_name,

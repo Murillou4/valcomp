@@ -43,7 +43,8 @@ def test_postgres_rows_are_normalized_for_pydantic_models() -> None:
         {
             "device_id": "device",
             "user_id": user_id,
-            "expo_push_token": "",
+            "push_token": "",
+            "provider": "fcm",
             "masked_token": "ExponentPush...",
             "platform": "android",
             "device_name": "",

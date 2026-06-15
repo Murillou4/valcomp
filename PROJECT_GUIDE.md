@@ -1,156 +1,160 @@
 # Valcomp Project Guide
 
-Este arquivo e o mapa do projeto. Leia antes de alterar qualquer parte do repo.
+Leia este arquivo antes de alterar o repositorio. O Valcomp tem tres aplicativos
+e uma pagina publica.
 
-## O que existe aqui
+## 1. Backend
 
-O Valcomp tem tres apps:
+- Codigo: `ares_backend/`
+- Runtime: FastAPI + Supabase Auth/Postgres + endpoints internos Riot.
+- Producao: `https://valcomp-api-cda2.fly.dev`
+- Deploy: `Dockerfile` + `fly.toml`.
+- Nao usa Riot Developer API key.
 
-1. **Backend hospedado**
-   - Pasta/pacote: `ares_backend/`
-   - Runtime: FastAPI + Supabase + endpoints internos Riot.
-   - Deploy: Fly.io via `Dockerfile` e `fly.toml`.
-   - Comando local: `.\.venv\Scripts\python.exe -m ares_backend`
-   - Responsabilidade: expor login/senha via `/auth/signup`, `/auth/login` e `/auth/refresh` usando Supabase Auth por baixo, guardar perfil, guardar vinculo Riot criptografado, consultar loja diaria, inventario, carteira, itens, status e rotas Valorant remotas.
-   - Tambem registra dispositivos push, watchlist de skins desejadas e notificacoes quando uma skin aparece na loja diaria ou Mercado Noturno.
-   - Persistencia de producao: preferir `DATABASE_URL` direto do Supabase Postgres. `SUPABASE_SERVICE_ROLE_KEY` e opcional.
-   - Nunca deve depender de Riot Developer API key.
-   - Nunca deve tentar chamar endpoints `127.0.0.1`, chat local, WebSocket local, XMPP continuo ou rotas que exigem partida/party ao vivo. Para isso retorna resposta estruturada.
+Responsabilidades:
 
-2. **Companion Windows**
-   - Pacote UI: `valcomp_companion/`
-   - CLI reaproveitada: `ares_backend/companion.py`
-   - Runtime: Python + PySide6.
-   - Comando dev: `.\run-companion.ps1`
-   - Build `.exe`: `.\tools\build_companion_windows.ps1`
-   - Responsabilidade: rodar uma vez no PC do usuario, detectar Riot Client local, ler sessao/SSID sem mostrar segredos, receber o codigo de 6 digitos do mobile e completar `POST /riot/link/complete`.
-   - Depois do vinculo, o usuario pode fechar o app. Ele so precisa abrir de novo se o backend retornar `relink_required`.
+- login, cadastro e refresh em `/auth/signup`, `/auth/login` e `/auth/refresh`;
+- perfil do app e vinculo Riot criptografado;
+- loja diaria, Mercado Noturno, carteira, inventario, itens e status;
+- rank/RR e historico normalizado em `/valorant/player/summary`;
+- wishlist, dispositivos FCM e entregas de notificacao.
 
-3. **Mobile app**
-   - Pasta: `apps/mobile/`
-   - Runtime: Expo SDK 56 + React Native + Expo Router.
-   - Comandos:
-     - `cd apps/mobile`
-     - `npm install`
-     - `npm run android`
-     - `npm run web`
-   - Responsabilidade: login email/senha pelo backend, foto/avatar, gerar codigo de vinculo, mostrar loja diaria, configurar alertas de skin, carteira, inventario, itens/status e perfil Riot.
-   - Estado atual: usa sessao real persistida em `expo-secure-store`; nao use OAuth nem `dev:mobile-user` no APK de producao.
+Nunca invente campos do jogo. Antes de criar UI ou normalizadores, confira
+`ares_backend/app.py`, os testes e a resposta real da Riot/Valorant-API.
 
-4. **GitHub Pages / downloads**
-   - Pasta: `docs/`
-   - Downloads publicados: `docs/downloads/valcomp-mobile.apk` e `docs/downloads/valcomp-companion-windows.exe`.
-   - Responsabilidade: ensinar o usuario final a instalar o APK, abrir o companion Windows e vincular a Riot pelo codigo.
+## 2. Companion Windows
 
-## Fluxo de vinculo correto
+- Codigo: `valcomp_companion/`
+- Runtime: Python + PySide6.
+- Desenvolvimento: `.\run-companion.ps1`
+- Build: `.\tools\build_companion_windows.ps1`
 
-1. Usuario cria conta ou entra no mobile com email/senha pelo backend.
-2. Mobile chama `POST /riot/link/start` com JWT Supabase.
-3. Backend gera `link_code` de 6 digitos com TTL curto.
-4. Usuario abre Valcomp Companion no Windows.
-5. Companion detecta Riot Client/VALORANT local, le tokens/SSID e envia `POST /riot/link/complete`.
-6. Backend criptografa credenciais Riot com `APP_SECRET_KEY` e associa ao usuario.
-7. Mobile passa a usar endpoints remotos do backend.
+O companion roda uma vez no PC em que o usuario joga, detecta a sessao local
+Riot, recebe o codigo de seis digitos e completa `/riot/link/complete`. Ele nao
+mostra nem salva tokens. Deve ser aberto novamente somente quando o backend
+retornar `relink_required`.
 
-## Rotas importantes
+## 3. Mobile Flutter
 
-Prioridade maxima:
+- Codigo: `apps/mobile/`
+- Runtime: Flutter/Dart.
+- Pacote Android: `com.cda2.valcomp`
+- API padrao: `https://valcomp-api-cda2.fly.dev`
 
-- `GET /valorant/store/daily`
-- `GET /valorant/items/{item_id}/status`
-- `GET /valorant/store/wallet`
-- `GET /valorant/store/inventory`
-- `POST /notifications/devices`
-- `POST /valorant/skins/watchlist`
-- `POST /valorant/skins/watchlist/check`
-- `POST /jobs/store-alerts/run`
-
-Rotas de catalogo:
-
-- Fonte: `ares_console/resources/endpoints.json`
-- Status atual das 82 rotas:
-  - `remote_supported`: pode executar no backend hospedado.
-  - `local_only`: so existe no PC do usuario.
-  - `requires_game_state`: exige party/pre-game/current-game vivo.
-  - `unsafe_mutation`: mutacao bloqueada por padrao.
-  - `unsupported_hosted`: ainda nao exposto como API hospedada.
-
-## Visual e assets
-
-Referencia local do Figma:
-
-- `C:\Users\muril\Downloads\Valcomp APP.fig`
-- `C:\Users\muril\Downloads\Valcomp APP.zip`
-- Export extraido no workspace: `figma-export/`
-
-Assets usados:
-
-- Mobile: `apps/mobile/assets/valcomp/`
-- Companion: `valcomp_companion/assets/`
-
-Linguagem visual atual:
-
-- Fundo escuro violeta quase preto.
-- Coral/vermelho da marca como acento principal.
-- Cards grandes, arredondados, com borda sutil.
-- Logo Valcomp e imagem de arma do export Figma.
-
-## Seguranca
-
-- Nunca logar SSID, access token, entitlement token, cookies ou PUUID completo.
-- Nunca devolver `expo_push_token` bruto em resposta HTTP. Use somente `masked_token`.
-- `APP_SECRET_KEY` e `SUPABASE_SERVICE_ROLE_KEY` so ficam em `.env`/Fly secrets.
-- `DATABASE_URL` contem senha do banco e tambem so deve ficar em env/Fly secrets.
-- `JOB_SECRET_TOKEN` protege jobs externos, como cron de alertas de loja.
-- Companion pode manter tokens em memoria durante o vinculo, mas nao deve salvar em disco.
-- Mobile so usa `SUPABASE_ANON_KEY`; service role key nunca entra no app.
-
-## Notificacoes de skin
-
-Fluxo correto:
-
-1. Mobile pede permissao de push e gera `ExpoPushToken`.
-2. Mobile registra o token em `POST /notifications/devices`.
-3. Usuario escolhe uma skin e chama `POST /valorant/skins/watchlist`.
-4. Quando `/valorant/store/daily` e consultada, o backend checa a watchlist e envia push se encontrar match.
-5. Para funcionamento automatico, configure um cron externo chamando `POST /jobs/store-alerts/run` com header `X-Job-Token`.
-6. O backend grava `notification_deliveries` para nao enviar a mesma skin repetida na mesma rotacao de loja.
-
-O backend envia via Expo Push Service. O mobile precisa de `EXPO_PUBLIC_EAS_PROJECT_ID`
-para gerar token com `expo-notifications`.
-
-## Validacao antes de entregar
-
-Backend/Python:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest
-```
-
-Mobile:
+Comandos:
 
 ```powershell
 cd apps/mobile
-npm install
-npm run lint
+flutter pub get
+flutter analyze
+flutter test
+flutter run
 ```
 
-Companion:
+Build:
 
 ```powershell
-.\.venv\Scripts\python.exe -m compileall ares_backend valcomp_companion
+$env:GRADLE_USER_HOME = "E:\DevCaches\gradle"
+flutter build apk --release
 ```
 
-## Onde mexer para cada tarefa
+A chave Android fica fora do Git:
 
-- Nova rota backend: `ares_backend/app.py`, `ares_backend/riot.py`, `ares_backend/store.py`.
-- Mudanca de classificacao de rotas: `ares_backend/capabilities.py`.
-- Auth email/senha e JWT Supabase: `ares_backend/auth.py`.
-- Persistencia Supabase: `ares_backend/repository.py` e `supabase/schema.sql`.
-- Notificacoes/watchlist: `ares_backend/notifications.py`, `ares_backend/app.py` e `supabase/schema.sql`.
-- UI companion: `valcomp_companion/app.py`.
-- Logica companion sem UI: `ares_backend/companion.py`.
-- Mobile API client: `apps/mobile/src/lib/api.ts`.
-- Mobile sessao/login: `apps/mobile/src/lib/session.tsx` e `apps/mobile/src/components/auth-screen.tsx`.
-- Mobile telas: `apps/mobile/src/app/`.
-- Pagina publica/downloads: `docs/`.
+- `E:\DevSecrets\valcomp-upload.jks`
+- `E:\DevSecrets\valcomp-upload-key.txt`
+- `apps/mobile/android/key.properties` e ignorado.
+
+Telas:
+
+- autenticar;
+- Home;
+- Loja diaria/Mercado Noturno;
+- Estatisticas;
+- Vincular;
+- Wishlist/Alertas;
+- Conta.
+
+A barra inferior possui apenas Loja, Home e Estatisticas. Alertas e Conta ficam
+no header; Vincular aparece nos estados sem conta Riot ou pela tela Conta.
+
+## 4. GitHub Pages
+
+- Pagina: `docs/`
+- APK: `docs/downloads/valcomp-mobile.apk`
+- Companion: `docs/downloads/valcomp-companion-windows.exe`
+- Manifesto: `docs/downloads/manifest.json`
+
+## Fluxo de vinculo
+
+1. Mobile autentica no backend.
+2. Mobile chama `POST /riot/link/start`.
+3. Backend gera um codigo de seis digitos com validade curta.
+4. Usuario abre o companion no PC com Riot Client/VALORANT logado.
+5. Companion envia a sessao para `POST /riot/link/complete`.
+6. Backend criptografa a sessao Riot com `APP_SECRET_KEY`.
+7. Mobile passa a consultar as rotas privadas.
+
+## Loja e dados reais
+
+Rotas prioritarias:
+
+- `GET /valorant/store/daily`
+- `GET /valorant/store/night-market`
+- `GET /valorant/items/{category}`
+- `GET /valorant/items/{item_id}/status`
+- `GET /valorant/player/summary`
+- `GET /valorant/skins/watchlist`
+
+Valorant-API fornece assets publicos. Loja, conta, rank e historico privados vem
+da sessao Riot vinculada. Loja diaria nao existe na Riot Developer API oficial.
+
+## Push de skins
+
+1. Flutter solicita permissao e gera token Firebase Cloud Messaging.
+2. Mobile registra `push_token` com `provider=fcm`.
+3. Usuario adiciona uma skin em `/valorant/skins/watchlist`.
+4. Backend compara a wishlist com a loja.
+5. Firebase Admin envia a notificacao e `notification_deliveries` evita spam.
+
+O app recebe as opcoes Firebase por `--dart-define`. O backend recebe
+`FIREBASE_PROJECT_ID` e `FIREBASE_SERVICE_ACCOUNT_JSON`. Sem essas credenciais,
+o restante funciona, mas push fica desativado.
+
+Para checagem automatica, um cron chama:
+
+```text
+POST /jobs/store-alerts/run
+X-Job-Token: <JOB_SECRET_TOKEN>
+```
+
+## Seguranca
+
+- Nunca logar SSID, access token, entitlement, cookies ou PUUID completo.
+- Service role, senha Postgres, chave Firebase e chave Android nao entram no Git.
+- Companion nao persiste a sessao Riot em disco.
+- Mutacoes Riot ficam bloqueadas por padrao.
+- Rotas locais/chat/party ao vivo retornam status estruturado no backend.
+
+## Validacao
+
+```powershell
+python -m pytest
+python -m compileall -q ares_backend valcomp_companion
+
+cd apps/mobile
+flutter analyze
+flutter test
+flutter build apk --release
+```
+
+Arquivos por responsabilidade:
+
+- API: `ares_backend/app.py`
+- Riot remoto: `ares_backend/riot.py`
+- Loja: `ares_backend/store.py`
+- Assets: `ares_backend/assets.py`
+- Player normalizado: `ares_backend/player.py`
+- Push/wishlist: `ares_backend/notifications.py`
+- Banco: `ares_backend/repository.py`, `supabase/schema.sql`
+- Mobile: `apps/mobile/lib/`
+- Companion: `valcomp_companion/app.py`
