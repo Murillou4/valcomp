@@ -36,7 +36,6 @@ class HomeScreen extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontFamily: 'Asgard',
                         fontSize: 23,
                         fontWeight: FontWeight.w800,
                       ),
@@ -92,12 +91,7 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 22),
-              _StoreBanner(
-                itemImage: state.store?.items.isNotEmpty == true
-                    ? state.store!.items.first.image
-                    : '',
-                onTap: () => state.selectTab(0),
-              ),
+              _StoreBanner(onTap: () => state.selectTab(0)),
               const SizedBox(height: 22),
               _StatusFeature(state: state),
               if (state.error.isNotEmpty) ...[
@@ -141,50 +135,65 @@ class _MetricCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: SizedBox(
-          height: 126,
+          height: 132,
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(17, 16, 14, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Asgard',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, size: 19),
+                  ],
                 ),
                 const Spacer(),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (imageUrl?.isNotEmpty == true)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.only(right: 9),
                         child: CachedNetworkImage(
                           imageUrl: imageUrl!,
-                          width: 31,
-                          height: 31,
+                          width: 34,
+                          height: 34,
                           errorWidget: (_, __, ___) => const SizedBox.shrink(),
                         ),
                       )
                     else if (icon != null)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Icon(icon, size: 25),
+                        padding: const EdgeInsets.only(right: 9),
+                        child: Icon(icon, size: 27),
                       ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            value,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 25,
-                              height: 1,
-                              fontWeight: FontWeight.w800,
+                          SizedBox(
+                            height: 27,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                value,
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  height: 1,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                           ),
                           if (subtitle?.isNotEmpty == true)
@@ -194,13 +203,12 @@ class _MetricCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: ValcompColors.muted,
-                                fontSize: 11,
+                                fontSize: 10.5,
                               ),
                             ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded, size: 20),
                   ],
                 ),
               ],
@@ -213,9 +221,8 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _StoreBanner extends StatelessWidget {
-  const _StoreBanner({required this.itemImage, required this.onTap});
+  const _StoreBanner({required this.onTap});
 
-  final String itemImage;
   final VoidCallback onTap;
 
   @override
@@ -249,18 +256,6 @@ class _StoreBanner extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (itemImage.isNotEmpty)
-                  Positioned(
-                    left: 36,
-                    right: 36,
-                    top: 14,
-                    height: 86,
-                    child: CachedNetworkImage(
-                      imageUrl: itemImage,
-                      fit: BoxFit.contain,
-                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
                 const Positioned(
                   right: 22,
                   bottom: 19,
@@ -269,7 +264,6 @@ class _StoreBanner extends StatelessWidget {
                       Text(
                         'Ver minha loja',
                         style: TextStyle(
-                          fontFamily: 'Asgard',
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                         ),
@@ -356,7 +350,6 @@ class _StatusFeature extends StatelessWidget {
                       Text(
                         title,
                         style: const TextStyle(
-                          fontFamily: 'Asgard',
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                         ),

@@ -84,7 +84,6 @@ class _LinkScreenState extends State<LinkScreen> {
                             ? 'Reconecte sua sessão Riot.'
                             : 'Leve sua loja para o celular.',
                         style: TextStyle(
-                          fontFamily: 'Asgard',
                           fontSize: compact ? 28 : 34,
                           height: 1.03,
                           fontWeight: FontWeight.w800,

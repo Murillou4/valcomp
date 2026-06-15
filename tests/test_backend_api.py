@@ -88,6 +88,30 @@ class FakeAssets:
     async def list_items(
         self, category: str, repo: InMemoryRepository | None = None
     ) -> list[dict[str, Any]]:
+        if category == "weapons":
+            return [
+                {
+                    "uuid": "weapon-vandal",
+                    "displayName": "Vandal",
+                    "displayIcon": "https://assets.example/vandal.png",
+                    "category": "EEquippableCategory::Rifle",
+                    "shopData": {"category": "Rifles"},
+                    "skins": [
+                        {
+                            "uuid": "skin-daily-parent",
+                            "displayName": "Vandal Daily Skin",
+                            "displayIcon": "https://assets.example/icon.png",
+                            "contentTierUuid": "premium",
+                            "levels": [
+                                {
+                                    "uuid": "skin-daily",
+                                    "displayName": "Vandal Daily Skin",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
         return [
             {
                 "uuid": "skin-daily",
@@ -95,6 +119,25 @@ class FakeAssets:
                 "displayIcon": "https://assets.example/icon.png",
                 "fullRender": "https://assets.example/full.png",
                 "contentTierUuid": "premium",
+            }
+        ]
+
+    async def skin_catalog(
+        self, repo: InMemoryRepository | None = None
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                "item_id": "skin-daily",
+                "skin_id": "skin-daily-parent",
+                "name": "Vandal Daily Skin",
+                "display_icon": "https://assets.example/icon.png",
+                "wallpaper": "",
+                "tier": "premium",
+                "weapon_id": "weapon-vandal",
+                "weapon_name": "Vandal",
+                "weapon_icon": "https://assets.example/vandal.png",
+                "category": "rifle",
+                "category_name": "Fuzis",
             }
         ]
 
@@ -265,6 +308,21 @@ def test_daily_store_wallet_items_and_status_routes() -> None:
     assert status.json()["owned"] is False
     assert status.json()["in_daily_store"] is True
     assert status.json()["price"] == 1775
+
+
+def test_skin_catalog_has_real_weapon_filters() -> None:
+    client, _, _, _ = make_client()
+    catalog = client.get(
+        "/valorant/skins/catalog?category=rifle&weapon=weapon-vandal&q=vandal",
+        headers=auth_headers(),
+    )
+    assert catalog.status_code == 200
+    payload = catalog.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["item_id"] == "skin-daily"
+    assert payload["items"][0]["weapon_name"] == "Vandal"
+    assert payload["items"][0]["category_name"] == "Fuzis"
+    assert payload["filters"]["weapons"][0]["id"] == "weapon-vandal"
 
 
 def test_routes_list_and_non_remote_execution_are_structured() -> None:

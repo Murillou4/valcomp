@@ -101,11 +101,11 @@ class StoreItemCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'Asgard',
                       color: Colors.white,
                       fontSize: 15,
                       height: 1.05,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.1,
                     ),
                   ),
                 ),
