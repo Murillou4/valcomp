@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-06-15",
+  "backend_url": "https://valcomp-api-cda2.fly.dev",
+  "mobile": {
+    "name": "Valcomp Mobile APK",
+    "file": "valcomp-mobile.apk",
+    "size_bytes": 103845705,
+    "sha256": "0F88ACE22EFA9A1A87584521724E72894C9055E0E271E9ADF8B65E1299AA0C4B",
+    "eas_build_id": "4af4894f-b4a7-4fc7-9d53-3efaa2dc87e9"
+  },
+  "desktop": {
+    "name": "Valcomp Companion Windows",
+    "file": "valcomp-companion-windows.zip",
+    "size_bytes": 53186444,
+    "sha256": "EDBA9EBC92AFC7600D3A105A98BD3804EF35AC61230DB9E41EE663AF93095A74"
+  }
+}

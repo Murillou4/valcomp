@@ -1,0 +1,16 @@
+.venv/
+.env
+.env.*
+!.env.example
+.local-git-backups/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+.idea/
+.vscode/
+response-exports/
+figma-export/
+*.spec

@@ -1,0 +1,46 @@
+from __future__ import annotations
+
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class BackendSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    app_name: str = "Ares Valorant API"
+    environment: str = "development"
+    api_base_url: str = "http://127.0.0.1:8000"
+    allow_dev_auth: bool = True
+
+    app_secret_key: str = Field(
+        default="dev-secret-change-me",
+        description="Secret used to encrypt Riot credential material.",
+    )
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+    supabase_jwt_secret: str = ""
+    database_url: str = ""
+    database_ssl: bool = True
+
+    riot_client_platform: str = (
+        "ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjog"
+        "IldpbmRvd3MiLA0KCSJwbGF0Zm9TVmVyc2lvbiI6ICIxMC4wLjE5"
+        "MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVu"
+        "a25vd24iDQp9"
+    )
+    default_client_version: str = ""
+
+    link_code_ttl_seconds: int = 600
+    http_timeout_seconds: float = 18.0
+    store_snapshot_ttl_seconds: int = 300
+    allow_unsafe_mutations: bool = False
+    job_secret_token: str = ""
+    expo_push_endpoint: str = "https://exp.host/--/api/v2/push/send"
+
+
+@lru_cache
+def get_settings() -> BackendSettings:
+    return BackendSettings()

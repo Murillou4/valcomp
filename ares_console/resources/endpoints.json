@@ -1,0 +1,3848 @@
+{
+  "metadata": {
+    "source": "https://github.com/techchrism/valorant-api-docs",
+    "package": "valorant-api-types",
+    "package_version": "0.10.1",
+    "generated_at": "2026-06-15T02:23:50.309Z",
+    "endpoint_count": 82
+  },
+  "endpoints": [
+    {
+      "id": "authCookiesEndpoint",
+      "name": "Auth Cookies",
+      "query_name": "",
+      "description": "Prepare cookies for auth request",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "POST",
+      "url_template": "https://auth.riotgames.com/api/v1/authorization",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/auth-cookies",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "variables": [],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "client_id": {
+            "type": "literal",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "literal": "play-valorant-web-prod"
+          },
+          "nonce": {
+            "type": "literal",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "literal": "1"
+          },
+          "redirect_uri": {
+            "type": "literal",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "literal": "https://playvalorant.com/opt_in"
+          },
+          "response_type": {
+            "type": "literal",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "literal": "token id_token"
+          },
+          "scope": {
+            "type": "literal",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "literal": "account openid"
+          }
+        }
+      },
+      "body_example": "{\n  \"client_id\": \"play-valorant-web-prod\",\n  \"nonce\": \"1\",\n  \"redirect_uri\": \"https://playvalorant.com/opt_in\",\n  \"response_type\": \"token id_token\",\n  \"scope\": \"account openid\"\n}",
+      "mutating": true
+    },
+    {
+      "id": "authRequestEndpoint",
+      "name": "Auth Request",
+      "query_name": "",
+      "description": "Perform authorization request to get token\n\nRequires cookies from the [POST Auth Cookies] stage. If the user has multi-factor authentication enabled, the response will contain a `type` of `multifactor` and [PUT Multi-Factor Authentication] will need to be used.\n\nNote: \nAuthenticating directly is prone to breakage (captchas and cloudflare anti-bot) and does not support users who use alternative sign-in methods.\nConsider using [GET Cookie Reauth] or opening a webview to the Riot login page and watching for redirects.\n\nFor an example of watching redirects in a webview (using Electron), see [insomnia-plugin-valorant](https://github.com/techchrism/insomnia-plugin-valorant/blob/a8f1db24cacf934d49e7b562b2265c76a8fabdf4/src/util/auth/open-webview-popup.ts)",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "PUT",
+      "url_template": "https://auth.riotgames.com/api/v1/authorization",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/auth-request",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "variables": [],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "type": {
+            "type": "literal",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "literal": "auth"
+          },
+          "language": {
+            "type": "literal",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "literal": "en_US"
+          },
+          "remember": {
+            "type": "boolean",
+            "optional": false,
+            "nullable": false,
+            "description": ""
+          },
+          "riot_identity": {
+            "type": "object",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "fields": {
+              "captcha": {
+                "type": "string",
+                "optional": false,
+                "nullable": false,
+                "description": "hcaptcha token from the login page (see <https://docs.hcaptcha.com/>)"
+              },
+              "username": {
+                "type": "string",
+                "optional": false,
+                "nullable": false,
+                "description": ""
+              },
+              "password": {
+                "type": "string",
+                "optional": false,
+                "nullable": false,
+                "description": ""
+              }
+            }
+          }
+        }
+      },
+      "body_example": "{\n  \"type\": \"auth\",\n  \"language\": \"en_US\",\n  \"remember\": false,\n  \"riot_identity\": {\n    \"captcha\": \"<captcha>\",\n    \"username\": \"Nome\",\n    \"password\": \"<password>\"\n  }\n}",
+      "mutating": true
+    },
+    {
+      "id": "cookieReauthEndpoint",
+      "name": "Cookie Reauth",
+      "query_name": "",
+      "description": "Get a new token using the cookies from a previous authorization request  \nUse the saved cookies from [PUT Auth Request] (specifically the `ssid` cookie). The auth token and id token can be found from the url this request redirects to.  \n  \nIt's recommended to use this endpoint instead of storing the password and sending it again.  \n  \nThere are ongoing tests at documented at <https://github.com/techchrism/riot-auth-test> that test for auth lifespan using different cookie strategies.  \nCurrently, it appears refreshing with just the `ssid` cookie is only stable for one week and refreshing with all auth cookies is stable for three weeks.  \n  \nOn a successful response, the 301 redirect location header will be of the format:\n> ```https://playvalorant.com/opt_in#access_token={access token}&scope=openid&iss=https%3A%2F%2Fauth.riotgames.com&id_token={id token}&token_type=Bearer&session_state={session state}&expires_in=3600```\n  \nOn an unsuccessful response, the 301 redirect location header will be of the format:\n> ```https://authenticate.riotgames.com/login?client_id=play-valorant-web-prod&nonce=1&redirect_uri=https%3A%2F%2Fauth.riotgames.com%2Fauthorize%3Fclient_id%3Dplay-valorant-web-prod%26nonce%3D1%26redirect_uri%3Dhttps%253A%252F%252Fplayvalorant.com%252Fopt_in%26response_type%3Dtoken%2520id_token&response_type=token%20id_token&method=riot_identity```\n",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "GET",
+      "url_template": "https://auth.riotgames.com/authorize?redirect_uri=https%3A%2F%2Fplayvalorant.com%2Fopt_in&client_id=play-valorant-web-prod&response_type=token%20id_token&nonce=1&scope=account%20openid",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/cookie-reauth",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "entitlementEndpoint",
+      "name": "Entitlement",
+      "query_name": "",
+      "description": "Get entitlement for remote requests with a token",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "POST",
+      "url_template": "https://entitlements.auth.riotgames.com/api/token/v1",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/entitlement",
+      "requirements": {
+        "token": true,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "variables": [],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "multiFactorAuthenticationEndpoint",
+      "name": "Multi-Factor Authentication",
+      "query_name": "",
+      "description": "Submits a multi-factor authentication code for login",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "PUT",
+      "url_template": "https://auth.riotgames.com/api/v1/authorization",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/multi-factor-authentication",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "variables": [],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "type": {
+            "type": "literal",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "literal": "multifactor"
+          },
+          "multifactor": {
+            "type": "object",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "fields": {
+              "otp": {
+                "type": "string",
+                "optional": false,
+                "nullable": false,
+                "description": "The multi-factor authentication code"
+              },
+              "rememberDevice": {
+                "type": "boolean",
+                "optional": false,
+                "nullable": false,
+                "description": ""
+              }
+            }
+          }
+        }
+      },
+      "body_example": "{\n  \"type\": \"multifactor\",\n  \"multifactor\": {\n    \"otp\": \"<otp>\",\n    \"rememberDevice\": false\n  }\n}",
+      "mutating": true
+    },
+    {
+      "id": "pasTokenEndpoint",
+      "name": "PAS Token",
+      "query_name": "",
+      "description": "Get a PAS token using the auth token. The PAS token is a JWT that contains the affinity for the XMPP server.",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "GET",
+      "url_template": "https://riot-geo.pas.si.riotgames.com/pas/v1/service/chat",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/pas-token",
+      "requirements": {
+        "token": true,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "playerInfoEndpoint",
+      "name": "Player Info",
+      "query_name": "",
+      "description": "Get the PUUID and other info from a token",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "GET",
+      "url_template": "https://auth.riotgames.com/userinfo",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/player-info",
+      "requirements": {
+        "token": true,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "riotClientConfigEndpoint",
+      "name": "Riot Client Config",
+      "query_name": "",
+      "description": "Gets the config file used by the Riot Client. This includes a ton of info, most of it undocumented.",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "GET",
+      "url_template": "https://clientconfig.rpg.riotgames.com/api/v1/config/player?app=Riot%20Client",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/riot-client-config",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "riotGeoEndpoint",
+      "name": "Riot Geo",
+      "query_name": "",
+      "description": "Get the region for a given ID token and auth token. The ID token and auth token can be obtained from [PUT Cookie Reauth]",
+      "category": "Authentication Endpoints",
+      "transport": "http",
+      "endpoint_type": "other",
+      "method": "PUT",
+      "url_template": "https://riot-geo.pas.si.riotgames.com/pas/v1/product/valorant",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/riot-geo",
+      "requirements": {
+        "token": true,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "id_token": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": "The ID token"
+          }
+        }
+      },
+      "body_example": "{\n  \"id_token\": \"<id_token>\"\n}",
+      "mutating": true
+    },
+    {
+      "id": "activateContractEndpoint",
+      "name": "Activate Contract",
+      "query_name": "Contracts_Activate",
+      "description": "Activate a specific contract by ID",
+      "category": "Contract Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "POST",
+      "url_template": "https://pd.{shard}.a.pvp.net/contracts/v1/contracts/{puuid}/special/{contract id}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/activate-contract",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "contract id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": "The contract ID to activate"
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "contractsEndpoint",
+      "name": "Contracts",
+      "query_name": "Contracts_Fetch",
+      "description": "Get contract details including agents, battlepass, missions, and recent games",
+      "category": "Contract Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/contracts/v1/contracts/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/contracts",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "itemUpgradesEndpoint",
+      "name": "Item Upgrades",
+      "query_name": "ItemProgressionDefinitionsV2_Fetch",
+      "description": "Get details for item upgrades",
+      "category": "Contract Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/contract-definitions/v3/item-upgrades",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/item-upgrades",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "currentGameLoadoutsEndpoint",
+      "name": "Current Game Loadouts",
+      "query_name": "CoreGame_FetchMatchLoadouts",
+      "description": "Get the current game loadout info for all players in the match",
+      "category": "Current Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/core-game/v1/matches/{current game match id}/loadouts",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/current-game-loadouts",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "current game match id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "currentGameMatchEndpoint",
+      "name": "Current Game Match",
+      "query_name": "CoreGame_FetchMatch",
+      "description": "Get the current game match info",
+      "category": "Current Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/core-game/v1/matches/{current game match id}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/current-game-match",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "current game match id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "currentGamePlayerEndpoint",
+      "name": "Current Game Player",
+      "query_name": "CoreGame_FetchPlayer",
+      "description": "Get the current game match ID for the provided player",
+      "category": "Current Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/core-game/v1/players/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/current-game-player",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "currentGameQuitEndpoint",
+      "name": "Current Game Quit",
+      "query_name": "CoreGame_DisassociatePlayer",
+      "description": "Quits the current game",
+      "category": "Current Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/core-game/v1/players/{puuid}/disassociate/{current game match id}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/current-game-quit",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "current game match id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "accountAliasEndpoint",
+      "name": "Account Alias",
+      "query_name": "",
+      "description": "Gets the player username and tagline",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/player-account/aliases/v1/active",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/account-alias",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "chatSessionEndpoint",
+      "name": "Chat Session",
+      "query_name": "",
+      "description": "Get the current session including player name and PUUID",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v1/session",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/chat-session",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "clientRegionEndpoint",
+      "name": "Client Region",
+      "query_name": "",
+      "description": "Gets info about the region and locale from the Riot client",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/riotclient/region-locale",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/client-region",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "entitlementsTokenEndpoint",
+      "name": "Entitlements Token",
+      "query_name": "",
+      "description": "Gets both the token and entitlement for API usage\n`accessToken` is used as the token and `token` is used as the entitlement.",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/entitlements/v1/token",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/entitlements-token",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "friendRequestsEndpoint",
+      "name": "Friend Requests",
+      "query_name": "",
+      "description": "Get a list of friend requests",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v4/friendrequests",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/friend-requests",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "friendsEndpoint",
+      "name": "Friends",
+      "query_name": "",
+      "description": "Get a list of friends",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v4/friends",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/friends",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "localHelpEndpoint",
+      "name": "Local Help",
+      "query_name": "",
+      "description": "Get help for the local client",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/help",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/local-help",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "localSwaggerDocsEndpoint",
+      "name": "Local Swagger Docs",
+      "query_name": "",
+      "description": "Fetches json Swagger docs for local endpoints. Can be imported into Swagger or Insomnia.",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/swagger/v3/openapi.json",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/local-swagger-docs",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "localWebSocketEndpoint",
+      "name": "Local WebSocket",
+      "query_name": "",
+      "description": "Connect to the Riot local websocket and subscribe to live JSON API events.",
+      "category": "Local Endpoints",
+      "transport": "websocket",
+      "endpoint_type": "other",
+      "method": "WSS",
+      "url_template": "wss://127.0.0.1:{port}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/local-web-socket",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "number",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "[5, \"OnJsonApiEvent\"]",
+      "mutating": false
+    },
+    {
+      "id": "presenceEndpoint",
+      "name": "Presence",
+      "query_name": "",
+      "description": "Get a list of online friends and their activity\n  If the player is playing Valorant, `private` is a base64-encoded JSON string that contains useful information such as party and in-progress game score.",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v4/presences",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/presence",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "removeFriendRequestEndpoint",
+      "name": "Remove Friend Request",
+      "query_name": "",
+      "description": "Removes an outgoing friend request",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "DELETE",
+      "url_template": "https://127.0.0.1:{port}/chat/v4/friendrequests",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/remove-friend-request",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "puuid": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": "Player UUID"
+          }
+        }
+      },
+      "body_example": "{\n  \"puuid\": \"<puuid>\"\n}",
+      "mutating": true
+    },
+    {
+      "id": "rsoUserInfoEndpoint",
+      "name": "RSO User Info",
+      "query_name": "",
+      "description": "Get RSO user info",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/rso-auth/v1/authorization/userinfo",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/rso-user-info",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "sendFriendRequestEndpoint",
+      "name": "Send Friend Request",
+      "query_name": "",
+      "description": "Sends a friend request to a player. Can be used in conjunction with [GET Friend Requests] and [DELETE Remove Friend Request] to determine a player's PUUID from their game name.",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "POST",
+      "url_template": "https://127.0.0.1:{port}/chat/v4/friendrequests",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/send-friend-request",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "game_name": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": ""
+          },
+          "game_tag": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": ""
+          }
+        }
+      },
+      "body_example": "{\n  \"game_name\": \"Nome\",\n  \"game_tag\": \"BR1\"\n}",
+      "mutating": true
+    },
+    {
+      "id": "sessionsEndpoint",
+      "name": "Sessions",
+      "query_name": "RiotClientSession_FetchSessions",
+      "description": "Gets info about the running Valorant process including start arguments\n  Can be used to get shard, region, and puuid by parsing launch args.",
+      "category": "Local Endpoints",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/product-session/v1/external-sessions",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/sessions",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "allChatInfoEndpoint",
+      "name": "All Chat Info",
+      "query_name": "",
+      "description": "Get information about all active conversations",
+      "category": "Local Endpoints / Chat",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v6/conversations",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/all-chat-info",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "chatHistoryEndpoint",
+      "name": "Chat History",
+      "query_name": "",
+      "description": "Get chat history for all conversations or a specific conversation if the cid is provided",
+      "category": "Local Endpoints / Chat",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v6/messages",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/chat-history",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [
+        {
+          "name": "cid",
+          "type": "string",
+          "optional": true,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "chatParticipantsEndpoint",
+      "name": "Chat Participants",
+      "query_name": "",
+      "description": "Get information about the participants of all active conversations or a specific conversation if a cid is provided",
+      "category": "Local Endpoints / Chat",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v5/participants",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/chat-participants",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [
+        {
+          "name": "cid",
+          "type": "string",
+          "optional": true,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "currentGameChatInfoEndpoint",
+      "name": "Current Game Chat Info",
+      "query_name": "",
+      "description": "Get information about the current game chat",
+      "category": "Local Endpoints / Chat",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v6/conversations/ares-coregame",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/current-game-chat-info",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "partyChatInfoEndpoint",
+      "name": "Party Chat Info",
+      "query_name": "",
+      "description": "Get information about the party chat",
+      "category": "Local Endpoints / Chat",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v6/conversations/ares-parties",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-chat-info",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "pregameChatInfoEndpoint",
+      "name": "Pre-Game Chat Info",
+      "query_name": "",
+      "description": "Get information about the pre-game chat",
+      "category": "Local Endpoints / Chat",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "GET",
+      "url_template": "https://127.0.0.1:{port}/chat/v6/conversations/ares-pregame",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/pre-game-chat-info",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "sendChatEndpoint",
+      "name": "Send Chat",
+      "query_name": "",
+      "description": "Send a message to the specified group",
+      "category": "Local Endpoints / Chat",
+      "transport": "http",
+      "endpoint_type": "local",
+      "method": "POST",
+      "url_template": "https://127.0.0.1:{port}/chat/v6/messages",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/send-chat",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": true
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "port",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "cid": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": "The conversation ID of the group to send the message to"
+          },
+          "message": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": ""
+          },
+          "type": {
+            "type": "enum",
+            "optional": false,
+            "nullable": false,
+            "description": "Use `chat` for whispers, `groupchat` for group messages, and `system` for system messages",
+            "options": [
+              "groupchat",
+              "chat",
+              "system"
+            ]
+          }
+        }
+      },
+      "body_example": "{\n  \"cid\": \"<cid>\",\n  \"message\": \"mensagem\",\n  \"type\": \"groupchat\"\n}",
+      "mutating": true
+    },
+    {
+      "id": "changeQueueEndpoint",
+      "name": "Change Queue",
+      "query_name": "Party_ChangeQueue",
+      "description": "Change the queue for the party",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/queue",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/change-queue",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "queueId": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": "Queue ID"
+          }
+        }
+      },
+      "body_example": "{\n  \"queueId\": \"<queueId>\"\n}",
+      "mutating": true
+    },
+    {
+      "id": "customGameConfigsEndpoint",
+      "name": "Custom Game Configs",
+      "query_name": "Party_FetchCustomGameConfigs",
+      "description": "Get information about the available gamemodes, maps, queues, and gamepods",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/customgameconfigs",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/custom-game-configs",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "enterMatchmakingQueueEndpoint",
+      "name": "Enter Matchmaking Queue",
+      "query_name": "Party_EnterMatchmakingQueue",
+      "description": "Enter the matchmaking queue for the party",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/matchmaking/join",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/enter-matchmaking-queue",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "leaveMatchmakingQueueEndpoint",
+      "name": "Leave Matchmaking Queue",
+      "query_name": "Party_LeaveMatchmakingQueue",
+      "description": "Leave the matchmaking queue for the party",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/matchmaking/leave",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/leave-matchmaking-queue",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "partyEndpoint",
+      "name": "Party",
+      "query_name": "Party_FetchParty",
+      "description": "Get the party information for the given party ID",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "partyChatTokenEndpoint",
+      "name": "Party Chat Token",
+      "query_name": "Party_FetchMUCToken",
+      "description": "Get the party chat token",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net//parties/v1/parties/{party id}/muctoken",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-chat-token",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "partyDeclineEndpoint",
+      "name": "Party Decline",
+      "query_name": "Party_DeclineRequest",
+      "description": "Decline a party invite request",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/request/{request id}/decline",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-decline",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "request id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": "The ID of the request to decline"
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "partyDisableCodeEndpoint",
+      "name": "Party Disable Code",
+      "query_name": "Party_CreateInviteCode",
+      "description": "Disable the party invite code",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "DELETE",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/invitecode",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-disable-code",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "partyGenerateCodeEndpoint",
+      "name": "Party Generate Code",
+      "query_name": "Party_CreateInviteCode",
+      "description": "Generate a party invite code",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/invitecode",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-generate-code",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "partyInviteEndpoint",
+      "name": "Party Invite",
+      "query_name": "Party_InviteToPartyByDisplayName",
+      "description": "Invite a player to the party by name and tagline",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/invites/name/{name}/tag/{tagline}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-invite",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "tagline",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "partyJoinByCodeEndpoint",
+      "name": "Party Join By Code",
+      "query_name": "Party_CreateInviteCode",
+      "description": "Join a party using an invite code",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/players/joinbycode/{code}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-join-by-code",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": "The invite code to join the party"
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "partyPlayerEndpoint",
+      "name": "Party Player",
+      "query_name": "Party_FetchPlayer",
+      "description": "Get the party information for the given player",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/players/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-player",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "partyRemovePlayerEndpoint",
+      "name": "Party Remove Player",
+      "query_name": "Party_RemovePlayer",
+      "description": "Remove a player from the current party",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "DELETE",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/players/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-remove-player",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "partyRequestEndpoint",
+      "name": "Party Request",
+      "query_name": "Party_RequestToJoinParty",
+      "description": "Requests to join the specified party ID",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/request",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-request",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "partySetMemberReadyEndpoint",
+      "name": "Party Set Member Ready",
+      "query_name": "Party_SetMemberReady",
+      "description": "Set the ready status of a player in the current party",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/members/{puuid}/setReady",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-set-member-ready",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "ready": {
+            "type": "boolean",
+            "optional": false,
+            "nullable": false,
+            "description": "Ready Status"
+          }
+        }
+      },
+      "body_example": "{\n  \"ready\": false\n}",
+      "mutating": true
+    },
+    {
+      "id": "partyVoiceTokenEndpoint",
+      "name": "Party Voice Token",
+      "query_name": "Party_FetchVoiceToken",
+      "description": "Get the party voice token",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net//parties/v1/parties/{party id}/voicetoken",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/party-voice-token",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "refreshCompetitiveTierEndpoint",
+      "name": "Refresh Competitive Tier",
+      "query_name": "Party_RefreshCompetitiveTier",
+      "description": "Refresh the competitive tier of the specified player",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/members/{puuid}/refreshCompetitiveTier",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/refresh-competitive-tier",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "refreshPingsEndpoint",
+      "name": "Refresh Pings",
+      "query_name": "Party_RefreshPings",
+      "description": "Refresh the pings of the specified player",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/members/{puuid}/refreshPings",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/refresh-pings",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "refreshPlayerIdentityEndpoint",
+      "name": "Refresh Player Identity",
+      "query_name": "Party_RefreshPlayerIdentity",
+      "description": "Refresh the identity of the specified player",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/members/{puuid}/refreshPlayerIdentity",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/refresh-player-identity",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "setCustomGameSettingsEndpoint",
+      "name": "Set Custom Game Settings",
+      "query_name": "Party_SetCustomGameSettings",
+      "description": "Changes the settings for a custom game",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/customgamesettings",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/set-custom-game-settings",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "Map": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": "Map ID"
+          },
+          "Mode": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": "Game Mode"
+          },
+          "UseBots": {
+            "type": "boolean",
+            "optional": false,
+            "nullable": false,
+            "description": ""
+          },
+          "GamePod": {
+            "type": "string",
+            "optional": false,
+            "nullable": false,
+            "description": ""
+          },
+          "GameRules": {
+            "type": "object",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "fields": {
+              "AllowGameModifiers": {
+                "type": "enum",
+                "optional": false,
+                "nullable": false,
+                "description": "",
+                "options": [
+                  "true",
+                  "false"
+                ]
+              },
+              "PlayOutAllRounds": {
+                "type": "enum",
+                "optional": false,
+                "nullable": false,
+                "description": "",
+                "options": [
+                  "true",
+                  "false"
+                ]
+              },
+              "SkipMatchHistory": {
+                "type": "enum",
+                "optional": false,
+                "nullable": false,
+                "description": "",
+                "options": [
+                  "true",
+                  "false"
+                ]
+              },
+              "TournamentMode": {
+                "type": "enum",
+                "optional": false,
+                "nullable": false,
+                "description": "",
+                "options": [
+                  "true",
+                  "false"
+                ]
+              },
+              "IsOvertimeWinByTwo": {
+                "type": "enum",
+                "optional": false,
+                "nullable": false,
+                "description": "",
+                "options": [
+                  "true",
+                  "false"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "body_example": "{\n  \"Map\": \"<Map>\",\n  \"Mode\": \"<Mode>\",\n  \"UseBots\": false,\n  \"GamePod\": \"<GamePod>\",\n  \"GameRules\": {\n    \"AllowGameModifiers\": \"true\",\n    \"PlayOutAllRounds\": \"true\",\n    \"SkipMatchHistory\": \"true\",\n    \"TournamentMode\": \"true\",\n    \"IsOvertimeWinByTwo\": \"true\"\n  }\n}",
+      "mutating": true
+    },
+    {
+      "id": "setPartyAccessibilityEndpoint",
+      "name": "Set Party Accessibility",
+      "query_name": "Party_SetAccessibility",
+      "description": "Set the accessibility of the party",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/accessibility",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/set-party-accessibility",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "",
+        "fields": {
+          "accessibility": {
+            "type": "enum",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "options": [
+              "OPEN",
+              "CLOSED"
+            ]
+          }
+        }
+      },
+      "body_example": "{\n  \"accessibility\": \"OPEN\"\n}",
+      "mutating": true
+    },
+    {
+      "id": "startCustomGameEndpoint",
+      "name": "Start Custom Game",
+      "query_name": "Party_StartCustomGame",
+      "description": "Start a custom game",
+      "category": "Party Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/parties/v1/parties/{party id}/startcustomgame",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/start-custom-game",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "party id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "lockCharacterEndpoint",
+      "name": "Lock Character",
+      "query_name": "Pregame_LockCharacter",
+      "description": "Lock in an agent  \n**DO NOT USE THIS FOR INSTALOCKING**  \nRiot doesn't like this. You may get banned or get the API restricted for the rest of us.  ",
+      "category": "Pre-Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/pregame/v1/matches/{pre-game match id}/lock/{agent id}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/lock-character",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "pre-game match id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "agent id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": "The agent ID to lock in"
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "pregameLoadoutsEndpoint",
+      "name": "Pre-Game Loadouts",
+      "query_name": "Pregame_GetMatchLoadouts",
+      "description": "Get Pre-Game loadout data",
+      "category": "Pre-Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/pregame/v1/matches/{pre-game match id}/loadouts",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/pre-game-loadouts",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "pre-game match id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "pregameMatchEndpoint",
+      "name": "Pre-Game Match",
+      "query_name": "Pregame_GetMatch",
+      "description": "Get Pre-Game match data",
+      "category": "Pre-Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/pregame/v1/matches/{pre-game match id}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/pre-game-match",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "pre-game match id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "pregamePlayerEndpoint",
+      "name": "Pre-Game Player",
+      "query_name": "Pregame_GetPlayer",
+      "description": "Get the pre-game match ID for the provided player",
+      "category": "Pre-Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "GET",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/pregame/v1/players/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/pre-game-player",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "pregameQuitEndpoint",
+      "name": "Pre-Game Quit",
+      "query_name": "Pregame_QuitMatch",
+      "description": "Quit the pre-game lobby",
+      "category": "Pre-Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/pregame/v1/matches/{pre-game match id}/quit",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/pre-game-quit",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "pre-game match id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "selectCharacterEndpoint",
+      "name": "Select Character",
+      "query_name": "Pregame_SelectCharacter",
+      "description": "Select an agent  \n**DO NOT USE THIS FOR INSTALOCKING**  \nRiot doesn't like this. You may get banned or get the API restricted for the rest of us.  ",
+      "category": "Pre-Game Endpoints",
+      "transport": "http",
+      "endpoint_type": "glz",
+      "method": "POST",
+      "url_template": "https://glz-{region}-1.{shard}.a.pvp.net/pregame/v1/matches/{pre-game match id}/select/{agent id}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/select-character",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "pre-game match id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "agent id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": "The agent ID to select"
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": true
+    },
+    {
+      "id": "accountXPEndpoint",
+      "name": "Account XP",
+      "query_name": "AccountXP_GetPlayer",
+      "description": "Get the account level, XP, and XP history for the current player. This endpoint only works with the authenticated player's PUUID.",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/account-xp/v1/players/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/account-xp",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "competitiveUpdatesEndpoint",
+      "name": "Competitive Updates",
+      "query_name": "MMR_FetchCompetitiveUpdates",
+      "description": "Get recent games and how they changed ranking",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/mmr/v1/players/{puuid}/competitiveupdates",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/competitive-updates",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [
+        {
+          "name": "startIndex",
+          "type": "number",
+          "optional": true,
+          "nullable": false,
+          "description": "The index of the first match to return. Defaults to 0"
+        },
+        {
+          "name": "endIndex",
+          "type": "number",
+          "optional": true,
+          "nullable": false,
+          "description": "The index of the last match to return. Defaults to 10"
+        },
+        {
+          "name": "queue",
+          "type": "string",
+          "optional": true,
+          "nullable": false,
+          "description": "The queue to filter by. Defaults to all queues"
+        }
+      ],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "configEndpoint",
+      "name": "Config",
+      "query_name": "Config_FetchConfig",
+      "description": "Get the config for the given player",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/v1/config/{region}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/config",
+      "requirements": {
+        "token": false,
+        "entitlement": false,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "fetchContentEndpoint",
+      "name": "Fetch Content",
+      "query_name": "Content_FetchContent",
+      "description": "Get a list of seasons, acts, and events",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "shared",
+      "method": "GET",
+      "url_template": "https://shared.{shard}.a.pvp.net/content-service/v3/content",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/fetch-content",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "leaderboardEndpoint",
+      "name": "Leaderboard",
+      "query_name": "MMR_FetchLeaderboard",
+      "description": "Get the leaderboard for a given season",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/mmr/v1/leaderboards/affinity/na/queue/competitive/season/{season id}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/leaderboard",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "season id",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": "Season ID"
+        }
+      ],
+      "query": [
+        {
+          "name": "startIndex",
+          "type": "number",
+          "optional": false,
+          "nullable": false,
+          "description": "The index of the first entry to return. The client will have this set to 0"
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "optional": false,
+          "nullable": false,
+          "description": "The number of entries to retrieve. The client will request 510 entries"
+        },
+        {
+          "name": "query",
+          "type": "string",
+          "optional": true,
+          "nullable": false,
+          "description": "An optional username to search for"
+        }
+      ],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "matchDetailsEndpoint",
+      "name": "Match Details",
+      "query_name": "MatchDetails_FetchMatchDetails",
+      "description": "Get the details of a match after it ends",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/match-details/v1/matches/{matchID}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/match-details",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "matchID",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": "Match ID"
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "matchHistoryEndpoint",
+      "name": "Match History",
+      "query_name": "MatchHistory_FetchMatchHistory",
+      "description": "Get the match history for the given player",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/match-history/v1/history/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/match-history",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [
+        {
+          "name": "startIndex",
+          "type": "number",
+          "optional": true,
+          "nullable": false,
+          "description": "The index of the first match to return. Defaults to 0"
+        },
+        {
+          "name": "endIndex",
+          "type": "number",
+          "optional": true,
+          "nullable": false,
+          "description": "The index of the last match to return. Defaults to 20"
+        },
+        {
+          "name": "queue",
+          "type": "string",
+          "optional": true,
+          "nullable": false,
+          "description": "The queue to filter by. Defaults to all queues"
+        }
+      ],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "nameServiceEndpoint",
+      "name": "Name Service",
+      "query_name": "NameService_GetPlayerInfo",
+      "description": "Get a player's name and tagline by their PUUID. Supports retrieving multiple players in one request.",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "PUT",
+      "url_template": "https://pd.{shard}.a.pvp.net/name-service/v2/players",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/name-service",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "array",
+        "optional": false,
+        "nullable": false,
+        "description": "PUUID(s) to retrieve the name data for",
+        "items": {
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": "Player UUID"
+        }
+      },
+      "body_example": "[\n  \"<texto>\"\n]",
+      "mutating": true
+    },
+    {
+      "id": "penaltiesEndpoint",
+      "name": "Penalties",
+      "query_name": "Restrictions_FetchPlayerRestrictionsV3",
+      "description": "Get the matchmaking penalties for the given player",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/restrictions/v3/penalties",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/penalties",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "playerLoadoutEndpoint",
+      "name": "Player Loadout",
+      "query_name": "playerLoadoutUpdate",
+      "description": "Get the player's current loadout. Only works for your own PUUID.",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/personalization/v2/players/{puuid}/playerloadout",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/player-loadout",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "playerMMREndpoint",
+      "name": "Player MMR",
+      "query_name": "MMR_FetchPlayer",
+      "description": "Get a player's MMR and history",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/mmr/v1/players/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/player-mmr",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "setPlayerLoadoutEndpoint",
+      "name": "Set Player Loadout",
+      "query_name": "playerLoadoutUpdate",
+      "description": "Set the player's current loadout.",
+      "category": "PVP Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "PUT",
+      "url_template": "https://pd.{shard}.a.pvp.net/personalization/v2/players/{puuid}/playerloadout",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/set-player-loadout",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": {
+        "type": "object",
+        "optional": false,
+        "nullable": false,
+        "description": "JSON-encoded player loadout object. See the Player Loadout endpoint for an example. Exclude the Subject and Version properties.",
+        "fields": {
+          "Guns": {
+            "type": "array",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "items": {
+              "type": "object",
+              "optional": false,
+              "nullable": false,
+              "description": "Guns and knife. Note that the knife (ID: 2f59173c-4bed-b6c3-2191-dea9b58be9c7) does not have charm data (buddies).",
+              "fields": {
+                "ID": {
+                  "type": "string",
+                  "optional": false,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "CharmInstanceID": {
+                  "type": "string",
+                  "optional": true,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "CharmID": {
+                  "type": "string",
+                  "optional": true,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "CharmLevelID": {
+                  "type": "string",
+                  "optional": true,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "SkinID": {
+                  "type": "string",
+                  "optional": false,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "SkinLevelID": {
+                  "type": "string",
+                  "optional": false,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "ChromaID": {
+                  "type": "string",
+                  "optional": false,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "Attachments": {
+                  "type": "array",
+                  "optional": false,
+                  "nullable": false,
+                  "description": "",
+                  "items": {
+                    "type": "unknown",
+                    "optional": false,
+                    "nullable": false,
+                    "description": ""
+                  }
+                }
+              }
+            }
+          },
+          "Sprays": {
+            "type": "array",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "items": {
+              "type": "object",
+              "optional": false,
+              "nullable": false,
+              "description": "",
+              "fields": {
+                "EquipSlotID": {
+                  "type": "string",
+                  "optional": false,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "SprayID": {
+                  "type": "string",
+                  "optional": false,
+                  "nullable": false,
+                  "description": "UUID"
+                },
+                "SprayLevelID": {
+                  "type": "null",
+                  "optional": false,
+                  "nullable": false,
+                  "description": ""
+                }
+              }
+            }
+          },
+          "Identity": {
+            "type": "object",
+            "optional": false,
+            "nullable": false,
+            "description": "",
+            "fields": {
+              "PlayerCardID": {
+                "type": "string",
+                "optional": false,
+                "nullable": false,
+                "description": "UUID"
+              },
+              "PlayerTitleID": {
+                "type": "string",
+                "optional": false,
+                "nullable": false,
+                "description": "UUID"
+              },
+              "AccountLevel": {
+                "type": "number",
+                "optional": false,
+                "nullable": false,
+                "description": ""
+              },
+              "PreferredLevelBorderID": {
+                "type": "string",
+                "optional": false,
+                "nullable": false,
+                "description": "UUID"
+              },
+              "HideAccountLevel": {
+                "type": "boolean",
+                "optional": false,
+                "nullable": false,
+                "description": ""
+              }
+            }
+          },
+          "Incognito": {
+            "type": "boolean",
+            "optional": false,
+            "nullable": false,
+            "description": ""
+          }
+        }
+      },
+      "body_example": "{\n  \"Guns\": [\n    {\n      \"ID\": \"<ID>\",\n      \"SkinID\": \"<SkinID>\",\n      \"SkinLevelID\": \"<SkinLevelID>\",\n      \"ChromaID\": \"<ChromaID>\",\n      \"Attachments\": [\n        null\n      ]\n    }\n  ],\n  \"Sprays\": [\n    {\n      \"EquipSlotID\": \"<EquipSlotID>\",\n      \"SprayID\": \"<SprayID>\",\n      \"SprayLevelID\": null\n    }\n  ],\n  \"Identity\": {\n    \"PlayerCardID\": \"<PlayerCardID>\",\n    \"PlayerTitleID\": \"<PlayerTitleID>\",\n    \"AccountLevel\": 0,\n    \"PreferredLevelBorderID\": \"<PreferredLevelBorderID>\",\n    \"HideAccountLevel\": false\n  },\n  \"Incognito\": false\n}",
+      "mutating": true
+    },
+    {
+      "id": "ownedItemsEndpoint",
+      "name": "Owned Items",
+      "query_name": "Store_GetEntitlements",
+      "description": "List what the player owns (agents, skins, buddies, ect.)\nCategory names and IDs:  \n\n`ItemTypeID` | Name\n--- | ---\n`01bb38e1-da47-4e6a-9b3d-945fe4655707` | Agents\n`f85cb6f7-33e5-4dc8-b609-ec7212301948` | Contracts\n`d5f120f8-ff8c-4aac-92ea-f2b5acbe9475` | Sprays\n`dd3bf334-87f3-40bd-b043-682a57a8dc3a` | Gun Buddies\n`3f296c07-64c3-494c-923b-fe692a4fa1bd` | Cards\n`e7c63390-eda7-46e0-bb7a-a6abdacd2433` | Skins\n`3ad1b2b2-acdb-4524-852f-954a76ddae0a` | Skin Variants\n`de7caa6b-adf7-4588-bbd1-143831e786c6` | Titles  ",
+      "category": "Store Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/store/v1/entitlements/{puuid}/{ItemTypeID}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/owned-items",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "ItemTypeID",
+          "type": "string",
+          "optional": true,
+          "nullable": false,
+          "description": "Item Type ID"
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "pricesEndpoint",
+      "name": "Prices",
+      "query_name": "Store_GetOffers",
+      "description": "Get the current store prices for all items",
+      "category": "Store Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/store/v1/offers/",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/prices",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "storefrontEndpoint",
+      "name": "Storefront",
+      "query_name": "Store_GetStorefrontV2",
+      "description": "Get the currently available items in the store",
+      "category": "Store Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/store/v2/storefront/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/storefront",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "walletEndpoint",
+      "name": "Wallet",
+      "query_name": "Store_GetWallet",
+      "description": "Get the current wallet balance for the user",
+      "category": "Store Endpoints",
+      "transport": "http",
+      "endpoint_type": "pd",
+      "method": "GET",
+      "url_template": "https://pd.{shard}.a.pvp.net/store/v1/wallet/{puuid}",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/wallet",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": true,
+        "client_platform": true,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [
+        {
+          "name": "shard",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        },
+        {
+          "name": "puuid",
+          "type": "string",
+          "optional": false,
+          "nullable": false,
+          "description": ""
+        }
+      ],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    },
+    {
+      "id": "xmppEndpoint",
+      "name": "XMPP Connection",
+      "query_name": "",
+      "description": "Open an authenticated TLS XMPP connection to Riot chat and exchange raw XML messages.",
+      "category": "XMPP",
+      "transport": "xmpp",
+      "endpoint_type": "other",
+      "method": "TCP",
+      "url_template": "xmpps://auto",
+      "docs_url": "https://valapidocs.techchrism.me/endpoint/xmpp-connection",
+      "requirements": {
+        "token": true,
+        "entitlement": true,
+        "client_version": false,
+        "client_platform": false,
+        "local_auth": false
+      },
+      "headers": {},
+      "variables": [],
+      "query": [],
+      "body_schema": null,
+      "body_example": "",
+      "mutating": false
+    }
+  ]
+}

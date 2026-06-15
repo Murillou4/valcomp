@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Valcomp Downloads</title>
+    <meta
+      name="description"
+      content="Baixe o APK Android e o companion Windows do Valcomp para consultar loja diaria do VALORANT e receber alertas de skins."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Valcomp beta</p>
+        <h1>Sua loja diaria do VALORANT no celular.</h1>
+        <p class="lead">
+          Instale o APK Android, abra o companion no Windows uma vez e vincule sua conta Riot
+          com um codigo curto. Depois disso, o app consulta o backend hospedado e envia
+          alertas quando uma skin desejada aparecer.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="./downloads/valcomp-mobile.apk">Baixar APK Android</a>
+          <a class="button" href="./downloads/valcomp-companion-windows.zip">Baixar Companion Windows</a>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <span class="step">1</span>
+          <h2>Instale o app Android</h2>
+          <p>
+            Baixe o APK, permita a instalacao de apps externos no Android e abra o Valcomp.
+            Crie uma conta ou entre com email e senha. Por enquanto nao usamos Google,
+            GitHub ou Apple.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step">2</span>
+          <h2>Gere o codigo</h2>
+          <p>
+            No app, entre em <strong>Vincular</strong> e toque em gerar codigo. Ele expira
+            rapido de proposito, entao deixe o PC com Riot Client logado por perto.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step">3</span>
+          <h2>Abra o companion</h2>
+          <p>
+            No Windows, extraia o ZIP inteiro e execute <strong>Valcomp Companion.exe</strong>.
+            Cole o codigo do app. O companion detecta sua sessao Riot local e completa o
+            vinculo com o backend.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step">4</span>
+          <h2>Ative alertas</h2>
+          <p>
+            No app, entre em <strong>Alertas</strong>, registre notificacoes do aparelho e
+            escolha as skins desejadas. Quando aparecerem na loja diaria, o backend envia
+            uma notificacao.
+          </p>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Downloads</h2>
+        <div class="download-list">
+          <div>
+            <h3>Valcomp Mobile APK</h3>
+            <p>Arquivo: <code>valcomp-mobile.apk</code></p>
+            <p>Tamanho: 103,845,705 bytes</p>
+            <p>SHA-256: <code>0F88ACE22EFA9A1A87584521724E72894C9055E0E271E9ADF8B65E1299AA0C4B</code></p>
+          </div>
+          <div>
+            <h3>Valcomp Companion Windows</h3>
+            <p>Arquivo: <code>valcomp-companion-windows.zip</code></p>
+            <p>Tamanho: 53,186,444 bytes</p>
+            <p>SHA-256: <code>EDBA9EBC92AFC7600D3A105A98BD3804EF35AC61230DB9E41EE663AF93095A74</code></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel subtle">
+        <h2>Backend</h2>
+        <p>
+          API em producao:
+          <a href="https://valcomp-api-cda2.fly.dev/health">https://valcomp-api-cda2.fly.dev</a>.
+          O backend usa Supabase Auth/Postgres e endpoints internos do cliente Riot, sem
+          Riot Developer API key.
+        </p>
+        <p>
+          Se o app mostrar <code>relink_required</code>, abra o companion de novo no PC
+          logado na Riot e gere um novo vinculo.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
