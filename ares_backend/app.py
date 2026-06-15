@@ -15,7 +15,12 @@ from starlette.concurrency import run_in_threadpool
 from ares_console.catalog import EndpointCatalog
 from ares_console.executor import EndpointExecutor
 
-from .assets import ASSET_ENDPOINTS, ValorantAssetsClient
+from .assets import (
+    ASSET_ENDPOINTS,
+    ValorantAssetsClient,
+    search_key,
+    skin_catalog_filters,
+)
 from .auth import SupabaseAuth
 from .capabilities import classify_endpoint
 from .errors import BackendError, RelinkRequiredError, RiotRequestError, UnauthorizedError
@@ -449,6 +454,60 @@ def create_app(
     ) -> dict[str, Any]:
         session = await riot_session_for_user(user, svc)
         return (await svc.store.item_status(user.id, session, item_id)).model_dump(mode="json")
+
+    @app.get("/valorant/skins/catalog")
+    async def skin_catalog(
+        _: Annotated[AuthUser, Depends(current_user)],
+        svc: Annotated[AppServices, Depends(get_services)],
+        q: str = "",
+        category: str = "",
+        weapon: str = "",
+        tier: str = "",
+        sort: str = "name_asc",
+        limit: Annotated[int, Query(ge=1, le=200)] = 80,
+        offset: Annotated[int, Query(ge=0, le=5000)] = 0,
+    ) -> dict[str, Any]:
+        all_items = await svc.assets.skin_catalog(svc.repo)
+        items = all_items
+        query = search_key(q.strip())
+        if query:
+            items = [
+                item
+                for item in items
+                if query
+                in search_key(
+                    f"{item.get('name', '')} {item.get('weapon_name', '')}"
+                )
+            ]
+        if category:
+            items = [
+                item for item in items if str(item.get("category") or "") == category
+            ]
+        if weapon:
+            items = [
+                item for item in items if str(item.get("weapon_id") or "") == weapon
+            ]
+        if tier:
+            items = [item for item in items if str(item.get("tier") or "") == tier]
+        if sort == "name_desc":
+            items = sorted(items, key=lambda item: search_key(str(item["name"])), reverse=True)
+        elif sort == "weapon":
+            items = sorted(
+                items,
+                key=lambda item: (
+                    search_key(str(item["weapon_name"])),
+                    search_key(str(item["name"])),
+                ),
+            )
+        else:
+            items = sorted(items, key=lambda item: search_key(str(item["name"])))
+        return {
+            "total": len(items),
+            "offset": offset,
+            "limit": limit,
+            "filters": skin_catalog_filters(all_items),
+            "items": items[offset : offset + limit],
+        }
 
     @app.get("/valorant/skins/watchlist")
     async def list_skin_watchlist(

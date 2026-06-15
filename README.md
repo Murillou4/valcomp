@@ -10,6 +10,8 @@
   e `/auth/refresh`, usando Supabase Auth por baixo. OAuth Google/GitHub ficou
   fora por enquanto.
 - Mobile Android Flutter: APK gerado em `docs/downloads/valcomp-mobile.apk`.
+- Wishlist mobile com catalogo real de skins, busca e filtros por categoria,
+  arma, raridade e ordenacao.
 - Companion Windows: executavel unico em `docs/downloads/valcomp-companion-windows.exe`.
 - Pagina publica para GitHub Pages: `docs/index.html`.
 - O app mobile nao deve depender de `dev:mobile-user` em producao.

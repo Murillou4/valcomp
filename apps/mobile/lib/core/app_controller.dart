@@ -25,7 +25,8 @@ class AppController extends ChangeNotifier {
   PlayerSummary? player;
   List<SkinWatch> watches = const [];
   List<NotificationDelivery> deliveries = const [];
-  List<Map<String, dynamic>> skinResults = const [];
+  SkinCatalog? skinCatalog;
+  bool skinCatalogLoading = false;
   String linkCode = '';
   DateTime? linkExpiresAt;
 
@@ -186,25 +187,33 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> searchSkins(String query) async {
-    final value = query.trim();
-    if (value.length < 2) {
-      skinResults = const [];
-      notifyListeners();
-      return;
-    }
+  Future<void> loadSkinCatalog({
+    String query = '',
+    String category = '',
+    String weapon = '',
+    String tier = '',
+    String sort = 'name_asc',
+  }) async {
+    skinCatalogLoading = true;
+    notifyListeners();
     try {
-      final response = await api.get(
-        '/valorant/items/skins?q=${Uri.encodeQueryComponent(value)}&limit=40',
+      final parameters = <String, String>{
+        'q': query.trim(),
+        'category': category,
+        'weapon': weapon,
+        'tier': tier,
+        'sort': sort,
+        'limit': '100',
+      };
+      final uri = Uri(
+        path: '/valorant/skins/catalog',
+        queryParameters: parameters,
       );
-      skinResults = _list(response['items'])
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .where((e) => (e['displayIcon'] ?? '').toString().isNotEmpty)
-          .toList();
-      notifyListeners();
+      skinCatalog = SkinCatalog.fromJson(await api.get(uri.toString()));
     } on ApiException catch (exception) {
       error = exception.message;
+    } finally {
+      skinCatalogLoading = false;
       notifyListeners();
     }
   }

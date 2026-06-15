@@ -40,7 +40,6 @@ class _StoreScreenState extends State<StoreScreen> {
                     child: Text(
                       'Loja',
                       style: TextStyle(
-                        fontFamily: 'Asgard',
                         fontSize: 37,
                         height: 1,
                         fontWeight: FontWeight.w700,
@@ -156,7 +155,6 @@ class _StoreTab extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             style: TextStyle(
               color: active ? Colors.white : ValcompColors.muted,
-              fontFamily: 'Asgard',
               fontSize: 14,
               fontWeight: active ? FontWeight.w800 : FontWeight.w500,
             ),

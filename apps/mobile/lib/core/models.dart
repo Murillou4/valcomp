@@ -209,6 +209,105 @@ class SkinWatch {
   );
 }
 
+class SkinCatalogItem {
+  const SkinCatalogItem({
+    required this.itemId,
+    required this.name,
+    required this.displayIcon,
+    required this.tier,
+    required this.weaponId,
+    required this.weaponName,
+    required this.weaponIcon,
+    required this.category,
+    required this.categoryName,
+  });
+
+  final String itemId;
+  final String name;
+  final String displayIcon;
+  final String tier;
+  final String weaponId;
+  final String weaponName;
+  final String weaponIcon;
+  final String category;
+  final String categoryName;
+
+  factory SkinCatalogItem.fromJson(Map<String, dynamic> json) =>
+      SkinCatalogItem(
+        itemId: _string(json['item_id']),
+        name: _string(json['name']),
+        displayIcon: _string(json['display_icon']),
+        tier: _string(json['tier']),
+        weaponId: _string(json['weapon_id']),
+        weaponName: _string(json['weapon_name']),
+        weaponIcon: _string(json['weapon_icon']),
+        category: _string(json['category']),
+        categoryName: _string(json['category_name']),
+      );
+}
+
+class CatalogFilter {
+  const CatalogFilter({
+    required this.id,
+    required this.name,
+    required this.count,
+    this.icon = '',
+    this.category = '',
+    this.color = '',
+  });
+
+  final String id;
+  final String name;
+  final int count;
+  final String icon;
+  final String category;
+  final String color;
+
+  factory CatalogFilter.fromJson(Map<String, dynamic> json) => CatalogFilter(
+    id: _string(json['id']),
+    name: _string(json['name']),
+    count: _int(json['count']),
+    icon: _string(json['icon']),
+    category: _string(json['category']),
+    color: _string(json['color']),
+  );
+}
+
+class SkinCatalog {
+  const SkinCatalog({
+    required this.total,
+    required this.items,
+    required this.categories,
+    required this.weapons,
+    required this.tiers,
+  });
+
+  final int total;
+  final List<SkinCatalogItem> items;
+  final List<CatalogFilter> categories;
+  final List<CatalogFilter> weapons;
+  final List<CatalogFilter> tiers;
+
+  factory SkinCatalog.fromJson(Map<String, dynamic> json) {
+    final filters = _map(json['filters']);
+    return SkinCatalog(
+      total: _int(json['total']),
+      items: _list(
+        json['items'],
+      ).map((item) => SkinCatalogItem.fromJson(_map(item))).toList(),
+      categories: _list(
+        filters['categories'],
+      ).map((item) => CatalogFilter.fromJson(_map(item))).toList(),
+      weapons: _list(
+        filters['weapons'],
+      ).map((item) => CatalogFilter.fromJson(_map(item))).toList(),
+      tiers: _list(
+        filters['tiers'],
+      ).map((item) => CatalogFilter.fromJson(_map(item))).toList(),
+    );
+  }
+}
+
 class NotificationDelivery {
   const NotificationDelivery({
     required this.itemName,

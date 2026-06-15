@@ -1,7 +1,7 @@
 name: valcomp
 description: "Valcomp: loja, estatisticas e alertas do VALORANT."
 publish_to: none
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.11.5
@@ -32,17 +32,6 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-  fonts:
-    - family: Asgard
-      fonts:
-        - asset: assets/fonts/Asgard-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Asgard-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Asgard-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Asgard-ExtraBold.ttf
-          weight: 800
 
 flutter_launcher_icons:
   android: true

@@ -26,27 +26,23 @@ ThemeData buildValcompTheme() {
     splashFactory: InkSparkle.splashFactory,
     textTheme: const TextTheme(
       displaySmall: TextStyle(
-        fontFamily: 'Asgard',
         color: ValcompColors.text,
         fontSize: 36,
         height: 1,
         fontWeight: FontWeight.w700,
       ),
       headlineMedium: TextStyle(
-        fontFamily: 'Asgard',
         color: ValcompColors.text,
         fontSize: 24,
         height: 1.1,
         fontWeight: FontWeight.w800,
       ),
       titleLarge: TextStyle(
-        fontFamily: 'Asgard',
         color: ValcompColors.text,
         fontSize: 20,
         fontWeight: FontWeight.w700,
       ),
       titleMedium: TextStyle(
-        fontFamily: 'Asgard',
         color: ValcompColors.text,
         fontSize: 16,
         fontWeight: FontWeight.w700,
@@ -62,7 +58,6 @@ ThemeData buildValcompTheme() {
         height: 1.4,
       ),
       labelLarge: TextStyle(
-        fontFamily: 'Asgard',
         color: ValcompColors.text,
         fontSize: 15,
         fontWeight: FontWeight.w700,
@@ -96,11 +91,7 @@ ThemeData buildValcompTheme() {
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        textStyle: const TextStyle(
-          fontFamily: 'Asgard',
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-        ),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
       ),
     ),
   );

@@ -78,7 +78,6 @@ class _AuthScreenState extends State<AuthScreen> {
                             _signup ? 'Crie sua conta' : 'Bem-vindo de volta',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontFamily: 'Asgard',
                               fontSize: compact ? 28 : 34,
                               height: 1,
                               fontWeight: FontWeight.w800,
