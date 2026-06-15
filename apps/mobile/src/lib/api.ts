@@ -59,11 +59,26 @@ async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const message =
-      payload?.error?.message ||
-      payload?.detail?.message ||
-      payload?.detail ||
+      translateBackendMessage(
+        payload?.error?.message ||
+          payload?.detail?.message ||
+          payload?.detail ||
+          '',
+      ) ||
       'Servidor Valcomp indisponivel. Tente novamente em alguns instantes.';
     throw new Error(message);
   }
   return payload as T;
+}
+
+function translateBackendMessage(message: string) {
+  const clean = String(message || '').trim();
+  const normalized = clean.toLowerCase();
+  if (normalized.includes('riot account is not linked')) {
+    return 'Conta Riot ainda nao vinculada. Abra a aba Vincular para conectar pelo companion Windows.';
+  }
+  if (normalized.includes('relink required')) {
+    return 'Sessao Riot expirada. Gere um novo vinculo pelo companion Windows.';
+  }
+  return clean;
 }

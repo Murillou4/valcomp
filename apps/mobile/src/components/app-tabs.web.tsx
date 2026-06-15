@@ -6,7 +6,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -16,7 +16,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 export default function AppTabs() {
   return (
     <Tabs>
-      <TabSlot style={{ height: '100%' }} />
+      <TabSlot style={styles.tabSlot} />
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="store" href="/" asChild>
@@ -39,11 +39,17 @@ export default function AppTabs() {
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable
+      {...props}
+      style={({ pressed }) => [styles.tabButton, pressed ? styles.pressed : null]}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+        <ThemedText
+          type="small"
+          numberOfLines={1}
+          themeColor={isFocused ? 'text' : 'textSecondary'}
+          style={styles.tabLabel}>
           {children}
         </ThemedText>
       </ThemedView>
@@ -52,12 +58,17 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 }
 
 export function CustomTabList(props: TabListProps) {
+  const { width } = useWindowDimensions();
+  const showBrand = width >= 560;
+
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Valcomp
-        </ThemedText>
+        {showBrand ? (
+          <ThemedText type="smallBold" style={styles.brandText}>
+            Valcomp
+          </ThemedText>
+        ) : null}
 
         {props.children}
       </ThemedView>
@@ -66,33 +77,54 @@ export function CustomTabList(props: TabListProps) {
 }
 
 const styles = StyleSheet.create({
+  tabSlot: {
+    flex: 1,
+    height: '100%',
+  },
   tabListContainer: {
     position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     width: '100%',
-    padding: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
+    backgroundColor: 'rgba(16, 16, 19, 0.96)',
   },
   innerContainer: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
+    width: '100%',
+    padding: Spacing.one,
+    borderRadius: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
-    flexGrow: 1,
-    gap: Spacing.two,
+    gap: Spacing.one,
     maxWidth: MaxContentWidth,
   },
   brandText: {
-    marginRight: 'auto',
+    marginHorizontal: Spacing.two,
   },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.76,
+    transform: [{ translateY: 1 }, { scale: 0.98 }],
+  },
+  tabButton: {
+    flex: 1,
+    minWidth: 0,
   },
   tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    minHeight: 42,
+    paddingHorizontal: Spacing.one,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
   },
 });

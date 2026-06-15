@@ -10,8 +10,8 @@
   },
   "desktop": {
     "name": "Valcomp Companion Windows",
-    "file": "valcomp-companion-windows.zip",
-    "size_bytes": 54698403,
-    "sha256": "E288B650C304BB4BB4803E91870B44CC696C73903191D965FD8DA8D2363316E2"
+    "file": "valcomp-companion-windows.exe",
+    "size_bytes": 60629017,
+    "sha256": "AF7D7F625D7D779E8FD1EF06D65997BC0653E69D9978CACA955F44F2A9B360C5"
   }
 }

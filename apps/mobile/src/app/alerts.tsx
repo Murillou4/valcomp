@@ -1,7 +1,19 @@
+import { Image } from 'expo-image';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
-import { Field, Header, Panel, PrimaryButton, Screen, SkeletonLine, StatusPill } from '@/components/valcomp-ui';
+import {
+  AnimatedBlock,
+  EmptyState,
+  Field,
+  Header,
+  Notice,
+  Panel,
+  PrimaryButton,
+  Screen,
+  SkeletonLine,
+  StatusPill,
+} from '@/components/valcomp-ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -57,7 +69,7 @@ export default function AlertsScreen() {
     const list = cleanQuery
       ? skins.filter((skin) => (skin.displayName || '').toLowerCase().includes(cleanQuery))
       : skins;
-    return list.slice(0, 30);
+    return list.slice(0, 18);
   }, [query, skins]);
 
   async function loadSkins() {
@@ -140,69 +152,71 @@ export default function AlertsScreen() {
 
   return (
     <Screen>
-      <Header
-        eyebrow="Alertas"
-        title="Avise quando a skin aparecer."
-        body="Escolha skins desejadas, ative notificacoes no aparelho e o backend confere a loja diaria para te avisar."
-      />
+      <AnimatedBlock>
+        <Header
+          eyebrow="Alertas"
+          title="Quando a skin entrar, o app te avisa."
+          body="Monte sua lista de desejo e ative notificacoes. O backend compara sua loja diaria com os itens monitorados."
+        />
+      </AnimatedBlock>
 
-      <Panel>
-        <ThemedView style={styles.rowBetween}>
-          <StatusPill label={`${watchlist.length} ALERTAS`} tone={watchlist.length ? 'success' : 'neutral'} />
-          <ThemedText type="code" themeColor="textSecondary">
-            loja diaria
+      <AnimatedBlock delay={70}>
+        <Panel style={styles.summaryPanel}>
+          <ThemedView style={styles.rowBetween}>
+            <StatusPill label={`${watchlist.length} ALERTAS`} tone={watchlist.length ? 'success' : 'neutral'} />
+            <ThemedText type="code" themeColor="textSecondary">
+              loja diaria
+            </ThemedText>
+          </ThemedView>
+          <ThemedText type="subtitle" style={styles.summaryTitle}>
+            Lista de desejo monitorada todos os dias.
           </ThemedText>
-        </ThemedView>
-        <PrimaryButton onPress={enablePush} disabled={pushLoading}>
-          {pushLoading ? 'Ativando...' : 'Ativar notificacoes neste aparelho'}
-        </PrimaryButton>
-        <PrimaryButton onPress={loadWatchlist} disabled={loadingWatchlist}>
-          {loadingWatchlist ? 'Atualizando...' : 'Atualizar meus alertas'}
-        </PrimaryButton>
-      </Panel>
+          <ThemedView style={styles.actions}>
+            <PrimaryButton onPress={enablePush} disabled={pushLoading}>
+              {pushLoading ? 'Ativando...' : 'Ativar notificacoes'}
+            </PrimaryButton>
+            <PrimaryButton variant="secondary" onPress={loadWatchlist} disabled={loadingWatchlist}>
+              {loadingWatchlist ? 'Atualizando...' : 'Atualizar lista'}
+            </PrimaryButton>
+          </ThemedView>
+        </Panel>
+      </AnimatedBlock>
 
       {watchlist.length ? (
-        <Panel>
-          <ThemedText type="smallBold">Skins monitoradas</ThemedText>
-          {watchlist.map((item) => (
-            <ThemedView key={item.item_id} style={styles.watchRow}>
-              <ThemedView style={styles.transparent}>
-                <ThemedText type="smallBold">{item.item_name || item.item_id.slice(0, 8)}</ThemedText>
-                <ThemedText type="code" themeColor="textSecondary">
-                  {item.tier || 'skin'}
-                </ThemedText>
-              </ThemedView>
-              <Pressable
-                disabled={busyItem === item.item_id}
-                onPress={() => removeSkin(item.item_id)}
-                style={({ pressed }) => [styles.smallButton, pressed ? styles.pressed : null]}>
-                <ThemedText type="smallBold" themeColor="accent">
-                  Remover
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
-          ))}
-        </Panel>
+        <AnimatedBlock delay={120}>
+          <Panel>
+            <ThemedText type="smallBold">Skins monitoradas</ThemedText>
+            {watchlist.map((item) => (
+              <WatchRow
+                key={item.item_id}
+                item={item}
+                busy={busyItem === item.item_id}
+                onRemove={() => removeSkin(item.item_id)}
+              />
+            ))}
+          </Panel>
+        </AnimatedBlock>
       ) : (
-        <Panel>
-          <ThemedText type="smallBold">Nenhum alerta ainda</ThemedText>
-          <ThemedText themeColor="textSecondary">
-            Carregue a lista de skins e adicione uma desejada para comecar.
-          </ThemedText>
-        </Panel>
+        <EmptyState
+          title="Nenhum alerta ainda"
+          body="Carregue o catalogo, escolha uma skin e o Valcomp avisa quando ela aparecer na sua loja."
+          action={<PrimaryButton onPress={loadSkins}>Carregar catalogo</PrimaryButton>}
+        />
       )}
 
-      <Panel>
-        <Field
-          label="Buscar skin"
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Vandal, Phantom, Sheriff..."
-        />
-        <PrimaryButton onPress={loadSkins} disabled={loadingSkins}>
-          {loadingSkins ? 'Carregando catalogo...' : skins.length ? 'Recarregar skins' : 'Carregar skins'}
-        </PrimaryButton>
-      </Panel>
+      <AnimatedBlock delay={150}>
+        <Panel>
+          <Field
+            label="Buscar skin"
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Vandal, Phantom, Sheriff..."
+          />
+          <PrimaryButton onPress={loadSkins} disabled={loadingSkins}>
+            {loadingSkins ? 'Carregando catalogo...' : skins.length ? 'Recarregar skins' : 'Carregar skins'}
+          </PrimaryButton>
+        </Panel>
+      </AnimatedBlock>
 
       {loadingSkins ? (
         <Panel>
@@ -214,78 +228,164 @@ export default function AlertsScreen() {
 
       {filteredSkins.length ? (
         <ThemedView style={styles.grid}>
-          {filteredSkins.map((skin) => {
+          {filteredSkins.map((skin, index) => {
             const watching = watchIds.has(skin.uuid.toLowerCase());
             return (
-              <Panel key={skin.uuid} style={styles.skinPanel}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {skin.contentTierUuid ? skin.contentTierUuid.slice(0, 8) : 'skin'}
-                </ThemedText>
-                <ThemedText type="subtitle" style={styles.skinName}>
-                  {skin.displayName}
-                </ThemedText>
-                <PrimaryButton
-                  onPress={() => addSkin(skin)}
-                  disabled={watching || busyItem === skin.uuid}>
-                  {watching ? 'Alerta ativo' : busyItem === skin.uuid ? 'Adicionando...' : 'Adicionar alerta'}
-                </PrimaryButton>
-              </Panel>
+              <AnimatedBlock key={skin.uuid} delay={index * 30}>
+                <SkinCard
+                  skin={skin}
+                  watching={watching}
+                  busy={busyItem === skin.uuid}
+                  onAdd={() => addSkin(skin)}
+                />
+              </AnimatedBlock>
             );
           })}
         </ThemedView>
       ) : null}
 
-      {notice ? (
-        <Panel>
-          <StatusPill label="OK" tone="success" />
-          <ThemedText themeColor="textSecondary">{notice}</ThemedText>
-        </Panel>
-      ) : null}
-
-      {error ? (
-        <Panel>
-          <StatusPill label="ERRO" tone="warning" />
-          <ThemedText themeColor="textSecondary">{error}</ThemedText>
-        </Panel>
-      ) : null}
+      {notice ? <Notice title="OK" body={notice} tone="success" /> : null}
+      {error ? <Notice title="ATENCAO" body={error} tone="warning" /> : null}
     </Screen>
   );
 }
 
+function WatchRow({
+  item,
+  busy,
+  onRemove,
+}: {
+  item: WatchItem;
+  busy: boolean;
+  onRemove: () => void;
+}) {
+  return (
+    <ThemedView style={styles.watchRow}>
+      {item.display_icon ? (
+        <Image source={{ uri: item.display_icon }} style={styles.watchImage} contentFit="contain" />
+      ) : (
+        <ThemedView type="accentSoft" style={styles.watchFallback} />
+      )}
+      <ThemedView style={styles.watchCopy}>
+        <ThemedText type="smallBold">{item.item_name || item.item_id.slice(0, 8)}</ThemedText>
+        <ThemedText type="code" themeColor="textSecondary">
+          {item.tier || 'skin'}
+        </ThemedText>
+      </ThemedView>
+      <Pressable
+        disabled={busy}
+        onPress={onRemove}
+        style={({ pressed }) => [styles.smallButton, pressed ? styles.pressed : null]}>
+        <ThemedText type="smallBold" themeColor="accent">
+          {busy ? '...' : 'Remover'}
+        </ThemedText>
+      </Pressable>
+    </ThemedView>
+  );
+}
+
+function SkinCard({
+  skin,
+  watching,
+  busy,
+  onAdd,
+}: {
+  skin: SkinAsset;
+  watching: boolean;
+  busy: boolean;
+  onAdd: () => void;
+}) {
+  const image = skin.fullRender || skin.displayIcon;
+  return (
+    <Panel style={styles.skinPanel}>
+      <ThemedView style={styles.skinTop}>
+        <ThemedView style={styles.skinCopy}>
+          <ThemedText type="code" themeColor="textSecondary">
+            {skin.contentTierUuid ? skin.contentTierUuid.slice(0, 8) : 'skin'}
+          </ThemedText>
+          <ThemedText type="subtitle" style={styles.skinName}>
+            {skin.displayName}
+          </ThemedText>
+        </ThemedView>
+        {image ? <Image source={{ uri: image }} style={styles.skinImage} contentFit="contain" /> : null}
+      </ThemedView>
+      <PrimaryButton onPress={onAdd} disabled={watching || busy}>
+        {watching ? 'Alerta ativo' : busy ? 'Adicionando...' : 'Adicionar alerta'}
+      </PrimaryButton>
+    </Panel>
+  );
+}
+
 const styles = StyleSheet.create({
+  summaryPanel: {
+    gap: Spacing.three,
+  },
   rowBetween: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
+    backgroundColor: 'transparent',
+  },
+  summaryTitle: {
+    fontSize: 28,
+    lineHeight: 31,
+  },
+  actions: {
+    gap: Spacing.two,
+    backgroundColor: 'transparent',
   },
   watchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
     backgroundColor: 'transparent',
   },
-  transparent: {
+  watchImage: {
+    width: 54,
+    height: 38,
+  },
+  watchFallback: {
+    width: 54,
+    height: 38,
+    borderRadius: 12,
+  },
+  watchCopy: {
     flex: 1,
     backgroundColor: 'transparent',
   },
   smallButton: {
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
   },
   grid: {
     gap: Spacing.three,
   },
   skinPanel: {
-    minHeight: 156,
+    minHeight: 160,
     justifyContent: 'space-between',
+  },
+  skinTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    backgroundColor: 'transparent',
+  },
+  skinCopy: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  skinImage: {
+    width: 116,
+    height: 72,
   },
   skinName: {
     fontSize: 25,
-    lineHeight: 30,
+    lineHeight: 29,
   },
   pressed: {
     opacity: 0.72,
+    transform: [{ translateY: 1 }],
   },
 });

@@ -39,8 +39,8 @@ O Valcomp tem tres apps:
 
 4. **GitHub Pages / downloads**
    - Pasta: `docs/`
-   - Downloads publicados: `docs/downloads/valcomp-mobile.apk` e `docs/downloads/valcomp-companion-windows.zip`.
-   - Responsabilidade: ensinar o usuario final a instalar o APK, extrair o companion Windows e vincular a Riot pelo codigo.
+   - Downloads publicados: `docs/downloads/valcomp-mobile.apk` e `docs/downloads/valcomp-companion-windows.exe`.
+   - Responsabilidade: ensinar o usuario final a instalar o APK, abrir o companion Windows e vincular a Riot pelo codigo.
 
 ## Fluxo de vinculo correto
 

@@ -1,7 +1,7 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 
 export default function AppTabs() {
   const scheme = useColorScheme();
@@ -10,37 +10,43 @@ export default function AppTabs() {
   return (
     <NativeTabs
       backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      blurEffect="systemChromeMaterialDark"
+      iconColor={{ default: colors.textSecondary, selected: colors.accent }}
+      indicatorColor={colors.backgroundSelected}
+      labelStyle={{
+        default: { color: colors.textSecondary, fontFamily: Fonts.sans, fontSize: 12, fontWeight: '600' },
+        selected: { color: colors.text, fontFamily: Fonts.sans, fontSize: 12, fontWeight: '700' },
+      }}
+      rippleColor={colors.accentSoft}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Loja</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
+          md={{ default: 'storefront', selected: 'local_mall' }}
+          sf={{ default: 'bag', selected: 'bag.fill' }}
         />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="link">
         <NativeTabs.Trigger.Label>Vincular</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
+          md={{ default: 'link', selected: 'linked_services' }}
+          sf={{ default: 'link', selected: 'link.circle.fill' }}
         />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="alerts">
         <NativeTabs.Trigger.Label>Alertas</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
+          md={{ default: 'notifications', selected: 'notifications_active' }}
+          sf={{ default: 'bell', selected: 'bell.fill' }}
         />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="account">
         <NativeTabs.Trigger.Label>Conta</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
+          md={{ default: 'person', selected: 'account_circle' }}
+          sf={{ default: 'person', selected: 'person.crop.circle.fill' }}
         />
       </NativeTabs.Trigger>
     </NativeTabs>

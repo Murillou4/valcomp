@@ -11,10 +11,13 @@ if (-not (Test-Path -LiteralPath $python)) {
 & $python -m PyInstaller `
     --noconfirm `
     --clean `
+    --onefile `
     --windowed `
+    --noupx `
     --name "Valcomp Companion" `
+    --icon "$root\valcomp_companion\assets\app-icon.ico" `
+    --version-file "$root\tools\windows_version_info.txt" `
     --add-data "$root\valcomp_companion\assets;valcomp_companion\assets" `
     "$root\valcomp_companion\app.py"
 
-Write-Host "Build gerado em: $root\dist\Valcomp Companion"
-
+Write-Host "Build gerado em: $root\dist\Valcomp Companion.exe"

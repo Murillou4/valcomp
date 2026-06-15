@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import sys
+from ctypes import windll
 from importlib.resources import files
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
-from PySide6.QtGui import QFont, QIntValidator, QPixmap
+from PySide6.QtGui import QFont, QIcon, QIntValidator, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -58,6 +60,7 @@ class ValcompCompanionWindow(QMainWindow):
         self._syncing_code = False
 
         self.setWindowTitle("Valcomp Companion")
+        self.setWindowIcon(load_asset_icon("app-icon.png"))
         self.setMinimumSize(560, 660)
         self.resize(620, 700)
         self.setObjectName("RootWindow")
@@ -319,8 +322,15 @@ def field_block(title: str, widget: QWidget, helper: str = "") -> QWidget:
 
 
 def load_asset_pixmap(name: str) -> QPixmap:
-    path = files("valcomp_companion").joinpath("assets", name)
-    return QPixmap(str(path))
+    return QPixmap(str(load_asset_path(name)))
+
+
+def load_asset_icon(name: str) -> QIcon:
+    return QIcon(str(load_asset_path(name)))
+
+
+def load_asset_path(name: str) -> Path:
+    return Path(str(files("valcomp_companion").joinpath("assets", name)))
 
 
 def mask_puuid(puuid: str) -> str:
@@ -443,8 +453,14 @@ QPushButton#PrimaryButton:disabled, QPushButton#SecondaryButton:disabled {
 
 
 def main() -> int:
+    if sys.platform == "win32":
+        windll.shell32.SetCurrentProcessExplicitAppUserModelID("Valcomp.Companion.1")
+
     app = QApplication(sys.argv)
     app.setApplicationName("Valcomp Companion")
+    app.setApplicationDisplayName("Valcomp Companion")
+    app.setOrganizationName("Valcomp")
+    app.setWindowIcon(load_asset_icon("app-icon.png"))
     window = ValcompCompanionWindow()
     window.show()
     return app.exec()

@@ -10,7 +10,7 @@
   e `/auth/refresh`, usando Supabase Auth por baixo. OAuth Google/GitHub ficou
   fora por enquanto.
 - Mobile Android: APK gerado em `docs/downloads/valcomp-mobile.apk`.
-- Companion Windows: ZIP gerado em `docs/downloads/valcomp-companion-windows.zip`.
+- Companion Windows: executavel unico em `docs/downloads/valcomp-companion-windows.exe`.
 - Pagina publica para GitHub Pages: `docs/index.html`.
 - O app mobile nao deve depender de `dev:mobile-user` em producao.
 
@@ -204,7 +204,7 @@ Para gerar o build Windows:
 .\tools\build_companion_windows.ps1
 ```
 
-O executavel fica em `dist\Valcomp Companion`.
+O executavel unico, com recursos embutidos, fica em `dist\Valcomp Companion.exe`.
 
 ### Mobile Expo
 

@@ -9,28 +9,28 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#F8F1FF',
-    background: '#0B0911',
-    backgroundElement: '#171221',
-    backgroundSelected: '#251A33',
-    textSecondary: '#B8A9C8',
-    border: '#38264D',
-    accent: '#FF4655',
-    accentSoft: '#321723',
-    success: '#7DDBA9',
-    warning: '#D59B4C',
+    text: '#F9F3EE',
+    background: '#101013',
+    backgroundElement: '#1A1719',
+    backgroundSelected: '#262022',
+    textSecondary: '#B7AAA2',
+    border: '#34292A',
+    accent: '#E7645C',
+    accentSoft: '#331D1E',
+    success: '#9DD6B2',
+    warning: '#D9A35B',
   },
   dark: {
-    text: '#F7F4EF',
-    background: '#0B0911',
-    backgroundElement: '#171221',
-    backgroundSelected: '#251A33',
-    textSecondary: '#B8A9C8',
-    border: '#38264D',
-    accent: '#FF4655',
-    accentSoft: '#321723',
-    success: '#6FBF92',
-    warning: '#D59B4C',
+    text: '#F9F3EE',
+    background: '#101013',
+    backgroundElement: '#1A1719',
+    backgroundSelected: '#262022',
+    textSecondary: '#B7AAA2',
+    border: '#34292A',
+    accent: '#E7645C',
+    accentSoft: '#331D1E',
+    success: '#9DD6B2',
+    warning: '#D9A35B',
   },
 } as const;
 
@@ -65,11 +65,12 @@ export const Spacing = {
   half: 2,
   one: 4,
   two: 8,
+  twoHalf: 12,
   three: 16,
   four: 24,
   five: 32,
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const BottomTabInset = Platform.select({ ios: 50, android: 80, web: 76 }) ?? 0;
 export const MaxContentWidth = 760;

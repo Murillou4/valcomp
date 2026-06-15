@@ -1,0 +1,14 @@
+.git/
+.venv/
+.local-git-backups/
+build/
+dist/
+docs/downloads/
+figma-export/
+response-exports/
+**/__pycache__/
+**/node_modules/
+**/.expo/
+**/web-build/
+**/*.pyc
+**/*.log
