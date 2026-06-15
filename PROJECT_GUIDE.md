@@ -116,9 +116,14 @@ da sessao Riot vinculada. Loja diaria nao existe na Riot Developer API oficial.
 4. Backend compara a wishlist com a loja.
 5. Firebase Admin envia a notificacao e `notification_deliveries` evita spam.
 
-O app recebe as opcoes Firebase por `--dart-define`. O backend recebe
-`FIREBASE_PROJECT_ID` e `FIREBASE_SERVICE_ACCOUNT_JSON`. Sem essas credenciais,
-o restante funciona, mas push fica desativado.
+`POST /notifications/test` envia um teste somente aos aparelhos FCM do usuario
+autenticado e e usado pelo botao da tela Alertas.
+
+O app Android usa a configuracao publica gerada pelo FlutterFire em
+`apps/mobile/lib/firebase_options.dart` e
+`apps/mobile/android/app/google-services.json`. O backend recebe
+`FIREBASE_PROJECT_ID` e `FIREBASE_SERVICE_ACCOUNT_JSON` como secrets no Fly.
+A chave privada nunca entra no Git.
 
 Para checagem automatica, um cron chama:
 

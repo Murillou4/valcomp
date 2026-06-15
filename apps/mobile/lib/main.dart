@@ -13,6 +13,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR');
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await PushService.initializeFirebase();
+  PushService.installBackgroundHandler();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

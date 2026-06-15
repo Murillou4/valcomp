@@ -336,6 +336,31 @@ def test_skin_watchlist_sends_daily_store_notification_once() -> None:
     assert deliveries["deliveries"][0]["status"] == "sent"
 
 
+def test_authenticated_user_can_send_push_test_to_own_device() -> None:
+    client, _, _, push = make_client()
+    blocked = client.post("/notifications/test")
+    assert blocked.status_code == 401
+
+    empty = client.post("/notifications/test", headers=auth_headers())
+    assert empty.status_code == 200
+    assert empty.json()["device_count"] == 0
+
+    client.post(
+        "/notifications/devices",
+        headers=auth_headers(),
+        json={
+            "push_token": "fcm-test-device-token-12345678901234567890",
+            "provider": "fcm",
+            "platform": "android",
+        },
+    )
+    result = client.post("/notifications/test", headers=auth_headers())
+    assert result.status_code == 200
+    assert result.json()["sent_count"] == 1
+    assert len(push.messages) == 1
+    assert push.messages[0]["data"]["type"] == "push_test"
+
+
 def test_store_alert_job_is_protected_and_runs_watchlists() -> None:
     client, repo, settings, push = make_client()
     settings.job_secret_token = "job-secret"

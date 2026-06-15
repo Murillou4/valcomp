@@ -44,38 +44,82 @@ class NotificationsScreen extends StatelessWidget {
                   color: ValcompColors.surface,
                   borderRadius: BorderRadius.circular(22),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: ValcompColors.red.withValues(alpha: 0.13),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_active_outlined,
-                        color: ValcompColors.red,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: ValcompColors.red.withValues(alpha: 0.13),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_active_outlined,
+                            color: ValcompColors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Verificação automática',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              SizedBox(height: 3),
+                              Text(
+                                'O servidor compara sua wishlist com cada rotação consultada.',
+                                style: TextStyle(
+                                  color: ValcompColors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Verificação automática',
-                            style: TextStyle(fontWeight: FontWeight.w800),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: state.loading
+                            ? null
+                            : () async {
+                                final message = await context
+                                    .read<AppController>()
+                                    .sendTestNotification();
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(message)),
+                                );
+                              },
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          foregroundColor: ValcompColors.text,
+                          side: const BorderSide(color: ValcompColors.border),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
                           ),
-                          SizedBox(height: 3),
-                          Text(
-                            'O servidor compara sua wishlist com cada rotação consultada.',
-                            style: TextStyle(
-                              color: ValcompColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                        ),
+                        icon: state.loading
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: ValcompColors.text,
+                                ),
+                              )
+                            : const Icon(Icons.send_rounded, size: 19),
+                        label: Text(
+                          state.loading
+                              ? 'Enviando teste...'
+                              : 'Enviar notificação de teste',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
                       ),
                     ),
                   ],

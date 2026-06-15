@@ -263,6 +263,13 @@ def create_app(
         devices = await svc.repo.list_push_devices(user.id)
         return {"devices": [public_device(device) for device in devices]}
 
+    @app.post("/notifications/test")
+    async def send_test_notification(
+        user: Annotated[AuthUser, Depends(current_user)],
+        svc: Annotated[AppServices, Depends(get_services)],
+    ) -> dict[str, Any]:
+        return await svc.alerts.send_test_notification(user.id)
+
     @app.delete("/notifications/devices/{device_id}")
     async def disable_push_device(
         device_id: str,
