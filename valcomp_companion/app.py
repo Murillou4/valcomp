@@ -5,7 +5,7 @@ from importlib.resources import files
 from typing import Any
 
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QFont, QIntValidator, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -58,22 +58,23 @@ class ValcompCompanionWindow(QMainWindow):
         self._syncing_code = False
 
         self.setWindowTitle("Valcomp Companion")
-        self.setMinimumSize(520, 640)
-        self.resize(540, 700)
+        self.setMinimumSize(560, 660)
+        self.resize(620, 700)
         self.setObjectName("RootWindow")
 
         root = QWidget()
         root.setObjectName("Root")
         self.setCentralWidget(root)
         page = QVBoxLayout(root)
-        page.setContentsMargins(18, 18, 18, 18)
+        page.setContentsMargins(0, 0, 0, 0)
         page.setSpacing(0)
 
         form = QFrame()
         form.setObjectName("FormPanel")
         form_layout = QVBoxLayout(form)
-        form_layout.setContentsMargins(26, 24, 26, 24)
-        form_layout.setSpacing(14)
+        form_layout.setContentsMargins(34, 28, 34, 28)
+        form_layout.setSpacing(10)
+        page.addWidget(form)
 
         label = QLabel("Valcomp Companion")
         label.setObjectName("Eyebrow")
@@ -82,7 +83,7 @@ class ValcompCompanionWindow(QMainWindow):
         self.logo = QLabel()
         self.logo.setPixmap(
             load_asset_pixmap("logo.png").scaledToWidth(
-                142, Qt.TransformationMode.SmoothTransformation
+                92, Qt.TransformationMode.SmoothTransformation
             )
         )
         form_layout.addWidget(self.logo, 0, Qt.AlignmentFlag.AlignLeft)
@@ -99,15 +100,15 @@ class ValcompCompanionWindow(QMainWindow):
         description.setWordWrap(True)
         form_layout.addWidget(description)
 
-        steps = QLabel(
-            "1. Abra o Riot Client ou o VALORANT e deixe sua conta logada.\n"
-            "2. No celular, abra o Valcomp e toque em Vincular.\n"
-            "3. Gere o codigo de 6 numeros, digite abaixo e clique em vincular."
+        form_layout.addWidget(
+            instruction_card(
+                [
+                    "1. Abra o Riot Client ou VALORANT e deixe sua conta logada.",
+                    "2. No celular, abra o Valcomp e toque em Vincular.",
+                    "3. Gere o codigo de 6 numeros e digite aqui.",
+                ]
+            )
         )
-        steps.setObjectName("StepsText")
-        steps.setWordWrap(True)
-        steps.setMinimumHeight(118)
-        form_layout.addWidget(steps)
 
         self.status = QLabel("Detectando sessao Riot...")
         self.status.setObjectName("StatusNeutral")
@@ -117,9 +118,13 @@ class ValcompCompanionWindow(QMainWindow):
         self.code_input = QLineEdit()
         self.code_input.setObjectName("CodeInput")
         self.code_input.setMaxLength(6)
-        self.code_input.setFixedHeight(66)
+        self.code_input.setValidator(QIntValidator(0, 999999, self))
+        self.code_input.setFixedHeight(64)
         self.code_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.code_input.setPlaceholderText("000000")
+        code_font = QFont("Segoe UI", 25)
+        code_font.setBold(True)
+        self.code_input.setFont(code_font)
         self.code_input.textChanged.connect(self._sanitize_code)
         self.code_input.textChanged.connect(self._sync_buttons)
         form_layout.addWidget(
@@ -166,7 +171,6 @@ class ValcompCompanionWindow(QMainWindow):
         hint.setObjectName("Hint")
         hint.setWordWrap(True)
         form_layout.addWidget(hint)
-        page.addWidget(form)
 
         self.setStyleSheet(STYLESHEET)
         self._sync_buttons()
@@ -283,6 +287,20 @@ class ValcompCompanionWindow(QMainWindow):
         )
 
 
+def instruction_card(lines: list[str]) -> QWidget:
+    frame = QFrame()
+    frame.setObjectName("InstructionsPanel")
+    layout = QVBoxLayout(frame)
+    layout.setContentsMargins(16, 14, 16, 14)
+    layout.setSpacing(7)
+    for line in lines:
+        label = QLabel(line)
+        label.setObjectName("InstructionLine")
+        label.setWordWrap(True)
+        layout.addWidget(label)
+    return frame
+
+
 def field_block(title: str, widget: QWidget, helper: str = "") -> QWidget:
     wrapper = QWidget()
     layout = QVBoxLayout(wrapper)
@@ -313,27 +331,28 @@ def mask_puuid(puuid: str) -> str:
 
 STYLESHEET = """
 QMainWindow#RootWindow, QWidget#Root {
-    background: #0B0911;
+    background: #171221;
     color: #F8F1FF;
     font-family: "Segoe UI", "Arial";
 }
 QFrame#FormPanel {
     background: #171221;
-    border: 1px solid #38264D;
-    border-radius: 28px;
+    border: 0;
+    border-radius: 0;
 }
-QLabel#StepsText {
-    color: #F8F1FF;
+QFrame#InstructionsPanel {
     background: #100D18;
     border: 1px solid #2F2142;
-    border-radius: 18px;
-    padding: 14px 16px;
+    border-radius: 16px;
+}
+QLabel#InstructionLine {
+    color: #F8F1FF;
     font-size: 14px;
     font-weight: 700;
 }
 QLabel#Body, QLabel#Hint, QLabel#FieldHelper {
     color: #B8A9C8;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 20px;
 }
 QLabel#Eyebrow {
@@ -345,7 +364,7 @@ QLabel#Eyebrow {
 }
 QLabel#PanelTitle {
     color: #F8F1FF;
-    font-size: 29px;
+    font-size: 30px;
     font-weight: 800;
 }
 QLabel#FieldLabel {
@@ -354,9 +373,10 @@ QLabel#FieldLabel {
     font-weight: 700;
 }
 QLabel#StatusNeutral, QLabel#StatusSuccess, QLabel#StatusWarning {
-    border-radius: 16px;
-    padding: 12px 14px;
+    border-radius: 14px;
+    padding: 10px 12px;
     font-weight: 700;
+    font-size: 13px;
 }
 QLabel#StatusNeutral {
     color: #B8A9C8;
@@ -377,8 +397,8 @@ QLineEdit#Input, QLineEdit#CodeInput {
     background: #0F0C17;
     color: #F8F1FF;
     border: 1px solid #38264D;
-    border-radius: 16px;
-    padding: 12px 14px;
+    border-radius: 14px;
+    padding: 0 14px;
     selection-background-color: #FF4655;
 }
 QLineEdit#Input:focus, QLineEdit#CodeInput:focus {
@@ -387,16 +407,13 @@ QLineEdit#Input:focus, QLineEdit#CodeInput:focus {
 QLineEdit#CodeInput {
     background: #090711;
     border: 2px solid #FF4655;
-    border-radius: 20px;
-    font-size: 32px;
-    font-weight: 900;
-    letter-spacing: 12px;
-    padding: 0 18px;
+    border-radius: 18px;
+    padding: 0 22px;
 }
 QPushButton#PrimaryButton, QPushButton#SecondaryButton, QPushButton#LinkButton {
     border: 0;
-    border-radius: 16px;
-    min-height: 48px;
+    border-radius: 14px;
+    min-height: 46px;
     padding: 0 18px;
     font-weight: 800;
 }
