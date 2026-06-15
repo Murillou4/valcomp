@@ -98,6 +98,7 @@ class RiotCredentialPayload(BaseModel):
 
 class LinkStartResponse(BaseModel):
     link_code: str
+    created_at: datetime
     expires_at: datetime
 
 

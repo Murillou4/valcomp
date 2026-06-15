@@ -22,12 +22,14 @@ class RiotAccount {
     required this.tagLine,
     required this.region,
     required this.shard,
+    this.linkedAt,
   });
 
   final String gameName;
   final String tagLine;
   final String region;
   final String shard;
+  final DateTime? linkedAt;
 
   String get riotId => tagLine.isEmpty ? gameName : '$gameName#$tagLine';
 
@@ -36,6 +38,7 @@ class RiotAccount {
     tagLine: _string(json['tag_line']),
     region: _string(json['region']),
     shard: _string(json['shard']),
+    linkedAt: DateTime.tryParse(_string(json['linked_at'])),
   );
 }
 

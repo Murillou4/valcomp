@@ -428,6 +428,22 @@ def test_link_complete_rejects_expired_riot_access_token() -> None:
     assert complete.status_code == 409
     assert complete.json()["error"]["code"] == "relink_required"
 
+    retry = client.post(
+        "/riot/link/complete",
+        json={
+            "link_code": start.json()["link_code"],
+            "riot": {
+                "access_token": "fresh-access",
+                "entitlement_token": "entitlement",
+                "puuid": "puuid-123",
+                "region": "br",
+                "shard": "na",
+                "client_version": "release-test",
+            },
+        },
+    )
+    assert retry.status_code == 200
+
 
 def test_daily_store_wallet_items_and_status_routes() -> None:
     client, repo, settings, _ = make_client()

@@ -46,6 +46,7 @@ class Repository(Protocol):
     async def get_riot_credentials(self, user_id: str) -> RiotCredentialRecord | None: ...
     async def upsert_riot_credentials(self, record: RiotCredentialRecord) -> RiotCredentialRecord: ...
     async def create_link_code(self, user_id: str, ttl_seconds: int) -> tuple[str, datetime]: ...
+    async def get_link_code_user(self, code: str) -> str | None: ...
     async def consume_link_code(self, code: str) -> str | None: ...
     async def save_store_snapshot(self, user_id: str, payload: dict[str, Any]) -> None: ...
     async def get_store_snapshot(self, user_id: str) -> dict[str, Any] | None: ...
@@ -157,6 +158,16 @@ class InMemoryRepository:
             return None
         user_id, expires_at = item
         if expires_at < datetime.now(UTC):
+            return None
+        return user_id
+
+    async def get_link_code_user(self, code: str) -> str | None:
+        item = self.link_codes.get(code)
+        if item is None:
+            return None
+        user_id, expires_at = item
+        if expires_at < datetime.now(UTC):
+            self.link_codes.pop(code, None)
             return None
         return user_id
 
@@ -317,6 +328,15 @@ class SupabaseRestRepository:
             f"{self.url}/link_codes?link_code=eq.{code}",
             headers=self.headers,
         )
+        expires_at = datetime.fromisoformat(str(row["expires_at"]).replace("Z", "+00:00"))
+        if expires_at < datetime.now(UTC):
+            return None
+        return str(row["user_id"])
+
+    async def get_link_code_user(self, code: str) -> str | None:
+        row = await self._select_one("link_codes", "link_code", code)
+        if not row:
+            return None
         expires_at = datetime.fromisoformat(str(row["expires_at"]).replace("Z", "+00:00"))
         if expires_at < datetime.now(UTC):
             return None
@@ -700,6 +720,19 @@ class PostgresRepository:
             delete from public.link_codes
             where link_code=$1
             returning user_id, expires_at
+            """,
+            code,
+        )
+        if not row or row["expires_at"] < datetime.now(UTC):
+            return None
+        return str(row["user_id"])
+
+    async def get_link_code_user(self, code: str) -> str | None:
+        row = await self._fetchrow(
+            """
+            select user_id, expires_at
+            from public.link_codes
+            where link_code=$1
             """,
             code,
         )

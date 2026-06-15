@@ -5,7 +5,7 @@ import json
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 from uuid import uuid4
 
@@ -386,20 +386,31 @@ def create_app(
         code, expires_at = await svc.repo.create_link_code(
             user.id, svc.settings.link_code_ttl_seconds
         )
-        return LinkStartResponse(link_code=code, expires_at=expires_at)
+        created_at = expires_at - timedelta(seconds=svc.settings.link_code_ttl_seconds)
+        return LinkStartResponse(
+            link_code=code,
+            created_at=created_at,
+            expires_at=expires_at,
+        )
 
     @app.post("/riot/link/complete", response_model=LinkCompleteResponse)
     async def link_complete(
         payload: LinkCompleteRequest,
         svc: Annotated[AppServices, Depends(get_services)],
     ) -> LinkCompleteResponse:
-        user_id = await svc.repo.consume_link_code(payload.link_code.strip())
-        if not user_id:
+        code = payload.link_code.strip()
+        if not await svc.repo.get_link_code_user(code):
             raise HTTPException(
                 status_code=404,
                 detail={"code": "link_code_invalid", "message": "Link code is invalid or expired."},
             )
         riot_payload = await normalize_link_payload(payload.riot, svc)
+        user_id = await svc.repo.consume_link_code(code)
+        if not user_id:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "link_code_invalid", "message": "Link code is invalid or expired."},
+            )
         now = datetime.now(UTC)
         account = RiotAccount(
             user_id=user_id,

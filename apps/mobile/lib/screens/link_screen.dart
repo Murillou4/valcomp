@@ -17,7 +17,9 @@ class LinkScreen extends StatefulWidget {
 
 class _LinkScreenState extends State<LinkScreen> {
   bool _advanced = false;
-  bool _checking = false;
+  bool _manualChecking = false;
+  bool _pollInFlight = false;
+  bool _polling = false;
   bool _successHandled = false;
   String _linkError = '';
   String _linkErrorDetails = '';
@@ -43,7 +45,7 @@ class _LinkScreenState extends State<LinkScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppController>();
-    final busy = state.loading || _checking;
+    final busy = state.loading || _manualChecking;
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -207,7 +209,7 @@ class _LinkScreenState extends State<LinkScreen> {
                       ),
                       if (state.linkCode.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        _AutoCheckNotice(checking: _checking),
+                        _AutoCheckNotice(active: _polling),
                       ],
                       if (_linkError.isNotEmpty) ...[
                         const SizedBox(height: 12),
@@ -266,7 +268,7 @@ class _LinkScreenState extends State<LinkScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: _checking
+                        child: _manualChecking
                             ? const SizedBox(
                                 height: 18,
                                 width: 18,
@@ -306,23 +308,39 @@ class _LinkScreenState extends State<LinkScreen> {
 
   void _startPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+    setState(() => _polling = true);
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       _verifyLinked(manual: false);
     });
-    unawaited(_verifyLinked(manual: false));
+    Future<void>.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) unawaited(_verifyLinked(manual: false));
+    });
   }
 
   Future<void> _verifyLinked({required bool manual}) async {
-    if (_checking || _successHandled) return;
-    setState(() {
-      _checking = true;
-      if (manual) {
+    if (_pollInFlight || _successHandled) return;
+    if (_codeExpired()) {
+      _pollTimer?.cancel();
+      setState(() {
+        _polling = false;
+        _linkError =
+            'Esse código expirou. Gere um novo código e tente novamente.';
+        _linkErrorDetails = '';
+      });
+      return;
+    }
+    _pollInFlight = true;
+    if (manual) {
+      setState(() {
+        _manualChecking = true;
         _linkError = '';
         _linkErrorDetails = '';
-      }
-    });
+      });
+    }
     try {
-      final linked = await context.read<AppController>().checkRiotLink();
+      final linked = await context.read<AppController>().checkRiotLink(
+        silent: !manual,
+      );
       if (!mounted) return;
       if (linked) {
         _finishWithSuccess();
@@ -348,10 +366,17 @@ class _LinkScreenState extends State<LinkScreen> {
         });
       }
     } finally {
-      if (mounted && !_successHandled) {
-        setState(() => _checking = false);
+      _pollInFlight = false;
+      if (mounted && manual && !_successHandled) {
+        setState(() => _manualChecking = false);
       }
     }
+  }
+
+  bool _codeExpired() {
+    final expiresAt = context.read<AppController>().linkExpiresAt;
+    if (expiresAt == null) return false;
+    return DateTime.now().toUtc().isAfter(expiresAt.toUtc());
   }
 
   void _finishWithSuccess() {
@@ -391,9 +416,9 @@ class _LinkScreenState extends State<LinkScreen> {
 }
 
 class _AutoCheckNotice extends StatelessWidget {
-  const _AutoCheckNotice({required this.checking});
+  const _AutoCheckNotice({required this.active});
 
-  final bool checking;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
@@ -407,21 +432,11 @@ class _AutoCheckNotice extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (checking)
-            const SizedBox(
-              width: 17,
-              height: 17,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.2,
-                color: ValcompColors.green,
-              ),
-            )
-          else
-            const Icon(
-              Icons.sync_rounded,
-              color: ValcompColors.green,
-              size: 19,
-            ),
+          Icon(
+            active ? Icons.sync_rounded : Icons.check_circle_outline_rounded,
+            color: ValcompColors.green,
+            size: 19,
+          ),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(

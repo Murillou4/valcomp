@@ -41,6 +41,7 @@ class AppController extends ChangeNotifier {
   SkinCatalog? skinCatalog;
   bool skinCatalogLoading = false;
   String linkCode = '';
+  DateTime? linkStartedAt;
   DateTime? linkExpiresAt;
 
   bool get linked => me?.riotAccount != null && !relinkRequired;
@@ -235,6 +236,11 @@ class AppController extends ChangeNotifier {
     try {
       final response = await api.post('/riot/link/start');
       linkCode = response['link_code']?.toString() ?? '';
+      linkStartedAt =
+          DateTime.tryParse(response['created_at']?.toString() ?? '') ??
+          DateTime.tryParse(
+            response['expires_at']?.toString() ?? '',
+          )?.subtract(const Duration(minutes: 10));
       linkExpiresAt = DateTime.tryParse(
         response['expires_at']?.toString() ?? '',
       );
@@ -247,18 +253,23 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<bool> checkRiotLink() async {
+  Future<bool> checkRiotLink({bool silent = false}) async {
     try {
-      me = MeData.fromJson(await api.get('/me'));
-      final linkedNow = me?.riotAccount != null;
+      final nextMe = MeData.fromJson(await api.get('/me'));
+      final account = nextMe.riotAccount;
+      final linkedNow = account != null && _isFreshLink(account);
       if (linkedNow) {
+        me = nextMe;
         store = DailyStore.fromJson(await api.get('/valorant/store/daily'));
         nightMarket = NightMarket.fromDaily(store!);
         relinkRequired = false;
         linkCode = '';
+        linkStartedAt = null;
         linkExpiresAt = null;
         error = '';
         errorDetails = '';
+      } else if (!silent) {
+        me = nextMe;
       }
       await DiagnosticLog.instance.record(
         level: 'info',
@@ -268,13 +279,15 @@ class AppController extends ChangeNotifier {
             : 'Vínculo Riot ainda não confirmado.',
         context: {'linked': linkedNow},
       );
-      notifyListeners();
+      if (linkedNow || !silent) notifyListeners();
       return linkedNow;
     } on ApiException catch (exception) {
-      if (exception.relinkRequired) relinkRequired = true;
-      error = exception.userMessage;
-      errorDetails = exception.fullDetails;
-      notifyListeners();
+      if (!silent) {
+        if (exception.relinkRequired) relinkRequired = true;
+        error = exception.userMessage;
+        errorDetails = exception.fullDetails;
+        notifyListeners();
+      }
       await DiagnosticLog.instance.record(
         level: 'warning',
         category: 'link',
@@ -282,8 +295,16 @@ class AppController extends ChangeNotifier {
         context: {'error': exception.userMessage},
         stackTrace: exception.fullDetails,
       );
+      if (silent) return false;
       rethrow;
     }
+  }
+
+  bool _isFreshLink(RiotAccount account) {
+    final startedAt = linkStartedAt;
+    final linkedAt = account.linkedAt;
+    if (startedAt == null || linkedAt == null) return true;
+    return !linkedAt.isBefore(startedAt.subtract(const Duration(seconds: 5)));
   }
 
   Future<void> loadSkinCatalog({
