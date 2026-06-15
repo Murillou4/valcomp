@@ -62,7 +62,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
       payload?.error?.message ||
       payload?.detail?.message ||
       payload?.detail ||
-      'Backend indisponivel.';
+      'Servidor Valcomp indisponivel. Tente novamente em alguns instantes.';
     throw new Error(message);
   }
   return payload as T;

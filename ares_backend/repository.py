@@ -384,7 +384,7 @@ class PostgresRepository:
 
     async def get_profile(self, user_id: str) -> Profile | None:
         row = await self._fetchrow("select * from public.profiles where user_id=$1", user_id)
-        return Profile(**dict(row)) if row else None
+        return _profile_from_row(row) if row else None
 
     async def upsert_profile(self, profile: Profile) -> Profile:
         row = await self._fetchrow(
@@ -404,11 +404,11 @@ class PostgresRepository:
             json.dumps(profile.preferences),
         )
         assert row is not None
-        return Profile(**dict(row))
+        return _profile_from_row(row)
 
     async def get_riot_account(self, user_id: str) -> RiotAccount | None:
         row = await self._fetchrow("select * from public.riot_accounts where user_id=$1", user_id)
-        return RiotAccount(**dict(row)) if row else None
+        return _riot_account_from_row(row) if row else None
 
     async def upsert_riot_account(self, account: RiotAccount) -> RiotAccount:
         row = await self._fetchrow(
@@ -436,11 +436,11 @@ class PostgresRepository:
             account.linked_at,
         )
         assert row is not None
-        return RiotAccount(**dict(row))
+        return _riot_account_from_row(row)
 
     async def get_riot_credentials(self, user_id: str) -> RiotCredentialRecord | None:
         row = await self._fetchrow("select * from public.riot_credentials where user_id=$1", user_id)
-        return RiotCredentialRecord(**dict(row)) if row else None
+        return _riot_credentials_from_row(row) if row else None
 
     async def upsert_riot_credentials(self, record: RiotCredentialRecord) -> RiotCredentialRecord:
         row = await self._fetchrow(
@@ -462,7 +462,7 @@ class PostgresRepository:
             record.updated_at,
         )
         assert row is not None
-        return RiotCredentialRecord(**dict(row))
+        return _riot_credentials_from_row(row)
 
     async def create_link_code(self, user_id: str, ttl_seconds: int) -> tuple[str, datetime]:
         expires_at = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
@@ -567,14 +567,14 @@ class PostgresRepository:
             device.updated_at,
         )
         assert row is not None
-        return PushDevice(**dict(row))
+        return _push_device_from_row(row)
 
     async def list_push_devices(self, user_id: str) -> list[PushDevice]:
         rows = await self._fetch(
             "select * from public.push_devices where user_id=$1 and enabled=true order by updated_at desc",
             user_id,
         )
-        return [PushDevice(**dict(row)) for row in rows]
+        return [_push_device_from_row(row) for row in rows]
 
     async def disable_push_device(self, user_id: str, device_id: str) -> bool:
         result = await self._execute(
@@ -612,7 +612,7 @@ class PostgresRepository:
             watch.updated_at,
         )
         assert row is not None
-        return SkinWatch(**dict(row))
+        return _skin_watch_from_row(row)
 
     async def list_skin_watches(self, user_id: str) -> list[SkinWatch]:
         rows = await self._fetch(
@@ -623,7 +623,7 @@ class PostgresRepository:
             """,
             user_id,
         )
-        return [SkinWatch(**dict(row)) for row in rows]
+        return [_skin_watch_from_row(row) for row in rows]
 
     async def delete_skin_watch(self, user_id: str, item_id: str) -> bool:
         result = await self._execute(
@@ -718,8 +718,40 @@ def _json_list(value: Any) -> list[str]:
     return [str(item) for item in value] if isinstance(value, list) else []
 
 
+def _row_dict(row: Any) -> dict[str, Any]:
+    return dict(row)
+
+
+def _stringify_user_id(data: dict[str, Any]) -> dict[str, Any]:
+    if "user_id" in data and data["user_id"] is not None:
+        data["user_id"] = str(data["user_id"])
+    return data
+
+
+def _profile_from_row(row: Any) -> Profile:
+    data = _stringify_user_id(_row_dict(row))
+    data["preferences"] = _json_value(data.get("preferences", {}))
+    return Profile(**data)
+
+
+def _riot_account_from_row(row: Any) -> RiotAccount:
+    return RiotAccount(**_stringify_user_id(_row_dict(row)))
+
+
+def _riot_credentials_from_row(row: Any) -> RiotCredentialRecord:
+    return RiotCredentialRecord(**_stringify_user_id(_row_dict(row)))
+
+
+def _push_device_from_row(row: Any) -> PushDevice:
+    return PushDevice(**_stringify_user_id(_row_dict(row)))
+
+
+def _skin_watch_from_row(row: Any) -> SkinWatch:
+    return SkinWatch(**_stringify_user_id(_row_dict(row)))
+
+
 def _notification_delivery_from_row(row: asyncpg.Record) -> NotificationDelivery:
-    data = dict(row)
+    data = _stringify_user_id(_row_dict(row))
     data["ticket_ids"] = _json_list(data.get("ticket_ids", []))
     return NotificationDelivery(**data)
 
