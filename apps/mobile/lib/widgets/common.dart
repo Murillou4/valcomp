@@ -19,25 +19,35 @@ class PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final padding = EdgeInsets.fromLTRB(24, topPadding, 24, bottomPadding);
-    final body = scrollable
-        ? CustomScrollView(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            slivers: [
-              SliverPadding(
-                padding: padding,
-                sliver: SliverToBoxAdapter(child: child),
-              ),
-            ],
-          )
-        : Padding(padding: padding, child: child);
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: body,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = constraints.maxWidth < 380 ? 18.0 : 24.0;
+        final padding = EdgeInsets.fromLTRB(
+          side,
+          topPadding,
+          side,
+          bottomPadding,
+        );
+        final body = scrollable
+            ? CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                slivers: [
+                  SliverPadding(
+                    padding: padding,
+                    sliver: SliverToBoxAdapter(child: child),
+                  ),
+                ],
+              )
+            : Padding(padding: padding, child: child);
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: body,
+          ),
+        );
+      },
     );
   }
 }
@@ -63,9 +73,11 @@ class CircleAction extends StatelessWidget {
       children: [
         Material(
           color: ValcompColors.surfaceRaised,
-          shape: const CircleBorder(),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+          ),
           child: InkWell(
-            customBorder: const CircleBorder(),
+            borderRadius: BorderRadius.circular(18),
             onTap: onTap,
             child: SizedBox(
               width: size,
@@ -154,7 +166,7 @@ class EmptyCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: ValcompColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: ValcompColors.border),
       ),
       child: Column(
@@ -264,6 +276,72 @@ Route<T> valcompRoute<T>(Widget page) {
       return SlideTransition(position: offset, child: child);
     },
   );
+}
+
+class SkeletonBlock extends StatefulWidget {
+  const SkeletonBlock({
+    super.key,
+    required this.height,
+    this.width = double.infinity,
+    this.radius = 18,
+    this.margin,
+  });
+
+  final double height;
+  final double width;
+  final double radius;
+  final EdgeInsetsGeometry? margin;
+
+  @override
+  State<SkeletonBlock> createState() => _SkeletonBlockState();
+}
+
+class _SkeletonBlockState extends State<SkeletonBlock>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final value = _controller.value;
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          margin: widget.margin,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            gradient: LinearGradient(
+              begin: Alignment(-1.2 + value * 2.4, -0.7),
+              end: Alignment(-0.2 + value * 2.4, 0.7),
+              colors: const [
+                ValcompColors.surface,
+                ValcompColors.surfaceRaised,
+                ValcompColors.surface,
+              ],
+            ),
+            border: Border.all(color: ValcompColors.border),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class AppPageHeader extends StatelessWidget {

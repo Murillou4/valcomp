@@ -60,7 +60,9 @@ class _StoreScreenState extends State<StoreScreen> {
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 48),
                       padding: const EdgeInsets.symmetric(horizontal: 18),
-                      shape: const StadiumBorder(),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                     icon: const Icon(Icons.add_circle_outline_rounded),
                     label: const Text('Wishlist'),
@@ -101,12 +103,7 @@ class _StoreScreenState extends State<StoreScreen> {
                 )
               else if ((state.loading && state.store == null) ||
                   (_night && state.nightMarketLoading && items.isEmpty))
-                const SizedBox(
-                  height: 320,
-                  child: Center(
-                    child: CircularProgressIndicator(color: ValcompColors.red),
-                  ),
-                )
+                const _StoreSkeleton()
               else if (_night && state.nightMarketError.isNotEmpty)
                 EmptyCard(
                   icon: Icons.cloud_off_rounded,
@@ -175,6 +172,21 @@ class _StoreScreenState extends State<StoreScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StoreSkeleton extends StatelessWidget {
+  const _StoreSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        SkeletonBlock(height: 132, margin: EdgeInsets.only(bottom: 22)),
+        SkeletonBlock(height: 132, margin: EdgeInsets.only(bottom: 22)),
+        SkeletonBlock(height: 132, margin: EdgeInsets.only(bottom: 22)),
+      ],
     );
   }
 }

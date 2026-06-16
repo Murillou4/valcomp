@@ -1,10 +1,10 @@
 :root {
   color-scheme: dark;
   font-family:
-    Inter, "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
-  background: #090e15;
+    "Segoe UI Variable", "Segoe UI", Geist, system-ui, -apple-system, sans-serif;
+  background: #080d13;
   color: #f7f8fa;
-  --background: #090e15;
+  --background: #080d13;
   --surface: #070b10;
   --raised: #101720;
   --border: #202a36;
@@ -28,8 +28,21 @@ body {
 
 body {
   background:
-    radial-gradient(circle at 78% -10%, rgba(255, 70, 85, 0.13), transparent 34%),
+    radial-gradient(circle at 78% -10%, rgba(255, 70, 85, 0.12), transparent 34%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.028), transparent 42%),
     var(--background);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.5;
 }
 
 button,
@@ -45,16 +58,17 @@ button {
   display: grid;
   grid-template-rows: 76px 1fr;
   width: 100%;
-  height: 100%;
+  height: 100dvh;
 }
 
 .hero {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 42px;
+  padding: 0 40px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(7, 11, 16, 0.72);
+  background: rgba(7, 11, 16, 0.78);
+  backdrop-filter: blur(12px);
 }
 
 .brand {
@@ -82,7 +96,7 @@ button {
   gap: 8px;
   padding: 9px 13px;
   border: 1px solid rgba(101, 214, 163, 0.26);
-  border-radius: 999px;
+  border-radius: 14px;
   color: #b6ecd1;
   background: rgba(101, 214, 163, 0.07);
   font-size: 12px;
@@ -92,9 +106,10 @@ button {
 .secure-dot {
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--green);
   box-shadow: 0 0 14px rgba(101, 214, 163, 0.65);
+  animation: breathe 1800ms ease-in-out infinite;
 }
 
 .content {
@@ -102,6 +117,32 @@ button {
   flex-direction: column;
   padding: 30px 42px 24px;
   min-height: 0;
+}
+
+.intro,
+.steps,
+.status,
+.form-grid,
+.advanced-toggle,
+.advanced,
+footer {
+  animation: rise-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.steps {
+  animation-delay: 70ms;
+}
+
+.status {
+  animation-delay: 130ms;
+}
+
+.form-grid {
+  animation-delay: 180ms;
+}
+
+footer {
+  animation-delay: 230ms;
 }
 
 .intro {
@@ -144,7 +185,7 @@ h1 {
   gap: 10px;
   padding: 11px 12px;
   border: 1px solid var(--border);
-  border-radius: 15px;
+  border-radius: 14px;
   background: rgba(7, 11, 16, 0.78);
 }
 
@@ -204,7 +245,7 @@ h1 {
   margin-top: 14px;
   padding: 13px 16px;
   border: 1px solid var(--border);
-  border-radius: 17px;
+  border-radius: 16px;
   background: var(--surface);
 }
 
@@ -297,7 +338,7 @@ input {
   height: 56px;
   padding: 0 16px;
   border: 1px solid var(--border);
-  border-radius: 15px;
+  border-radius: 14px;
   outline: none;
   background: var(--surface);
   color: white;
@@ -309,6 +350,12 @@ input {
 input:focus {
   border-color: var(--red);
   box-shadow: 0 0 0 3px rgba(255, 70, 85, 0.11);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgba(255, 70, 85, 0.22);
+  outline-offset: 2px;
 }
 
 #link-code {
@@ -328,7 +375,7 @@ input:focus {
   right: 14px;
   transform: translateY(-50%);
   padding: 6px 9px;
-  border-radius: 999px;
+  border-radius: 10px;
   color: var(--muted);
   background: var(--raised);
   font-size: 10px;
@@ -357,7 +404,7 @@ input:focus {
 .button {
   min-height: 48px;
   border: 0;
-  border-radius: 15px;
+  border-radius: 14px;
   font-size: 13px;
   font-weight: 850;
   transition:
@@ -371,7 +418,7 @@ input:focus {
 }
 
 .button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
 }
 
 .button.primary {
@@ -408,7 +455,7 @@ input:focus {
   margin-top: 9px;
   padding: 13px;
   border: 1px solid var(--border);
-  border-radius: 15px;
+  border-radius: 14px;
   background: rgba(7, 11, 16, 0.7);
 }
 
@@ -451,6 +498,31 @@ footer p {
 
 .footer-actions button:hover {
   color: white;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @media (max-height: 690px) {

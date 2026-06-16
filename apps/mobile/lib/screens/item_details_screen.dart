@@ -103,6 +103,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                 decoration: BoxDecoration(
                   color: ValcompColors.surface,
                   borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: ValcompColors.border),
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
@@ -159,12 +160,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
               ],
               const SizedBox(height: 24),
               if (_loading)
-                const SizedBox(
-                  height: 150,
-                  child: Center(
-                    child: CircularProgressIndicator(color: ValcompColors.red),
-                  ),
-                )
+                const _StatusSkeleton()
               else if (_error?.relinkRequired == true)
                 EmptyCard(
                   icon: Icons.link_rounded,
@@ -188,7 +184,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
               else if (_status != null)
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final width = constraints.maxWidth >= 390
+                    final width = constraints.maxWidth >= 330
                         ? (constraints.maxWidth - 20) / 3
                         : constraints.maxWidth;
                     return Wrap(
@@ -279,40 +275,62 @@ class _Availability extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        height: 112,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: ValcompColors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: active
-                ? ValcompColors.green.withValues(alpha: 0.35)
-                : ValcompColors.border,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              icon,
-              size: 21,
-              color: active ? ValcompColors.green : ValcompColors.muted,
-            ),
-            const Spacer(),
-            Text(
-              label,
-              style: const TextStyle(color: ValcompColors.muted, fontSize: 10),
-            ),
-            Text(
-              value,
-              maxLines: 2,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
-            ),
-          ],
+    return Container(
+      height: 112,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ValcompColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: active
+              ? ValcompColors.green.withValues(alpha: 0.35)
+              : ValcompColors.border,
         ),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 21,
+            color: active ? ValcompColors.green : ValcompColors.muted,
+          ),
+          const Spacer(),
+          Text(
+            label,
+            style: const TextStyle(color: ValcompColors.muted, fontSize: 10),
+          ),
+          Text(
+            value,
+            maxLines: 2,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusSkeleton extends StatelessWidget {
+  const _StatusSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth >= 330
+            ? (constraints.maxWidth - 20) / 3
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(width: width, child: const SkeletonBlock(height: 112)),
+            SizedBox(width: width, child: const SkeletonBlock(height: 112)),
+            SizedBox(width: width, child: const SkeletonBlock(height: 112)),
+          ],
+        );
+      },
     );
   }
 }

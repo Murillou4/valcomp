@@ -43,6 +43,7 @@ class NotificationsScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: ValcompColors.surface,
                   borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: ValcompColors.border),
                 ),
                 child: Column(
                   children: [
@@ -149,6 +150,7 @@ class NotificationsScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: ValcompColors.surface,
                       borderRadius: BorderRadius.circular(19),
+                      border: Border.all(color: ValcompColors.border),
                     ),
                     child: Row(
                       children: [

@@ -7,6 +7,7 @@ import 'package:valcomp/core/models.dart';
 import 'package:valcomp/core/theme.dart';
 import 'package:valcomp/preview_main.dart';
 import 'package:valcomp/screens/home_screen.dart';
+import 'package:valcomp/screens/item_details_screen.dart';
 import 'package:valcomp/screens/wishlist_screen.dart';
 import 'package:valcomp/widgets/store_item_card.dart';
 
@@ -71,5 +72,25 @@ void main() {
 
     final text = tester.widget<Text>(find.text('PHANTOM RGX 11Z PRO'));
     expect(text.style?.fontFamily, isNot('Asgard'));
+  });
+
+  testWidgets('Item details status cards do not render layout errors', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      const ItemDetailsScreen(
+        itemId: 'd980c0c8-492b-b8df-2d91-af99a7707170',
+        name: 'Vandal Imortalizados',
+        image:
+            'https://media.valorant-api.com/weaponskins/d980c0c8-492b-b8df-2d91-af99a7707170/displayicon.png',
+        tier: '12683d76-48d7-84a3-4e09-6985794f0445',
+        knownPrice: 875,
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('Loja diária'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

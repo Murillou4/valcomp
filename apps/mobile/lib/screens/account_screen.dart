@@ -53,7 +53,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   height: 92,
                   decoration: BoxDecoration(
                     color: ValcompColors.surfaceRaised,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(26),
                     border: Border.all(
                       color: ValcompColors.red.withValues(alpha: 0.45),
                       width: 2,
@@ -93,6 +93,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 decoration: BoxDecoration(
                   color: ValcompColors.surface,
                   borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: ValcompColors.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

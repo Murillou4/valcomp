@@ -65,12 +65,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
               ),
               const SizedBox(height: 24),
               if (_loading)
-                const SizedBox(
-                  height: 420,
-                  child: Center(
-                    child: CircularProgressIndicator(color: ValcompColors.red),
-                  ),
-                )
+                const _MatchSkeleton()
               else if (_error != null)
                 EmptyCard(
                   icon: Icons.cloud_off_rounded,
@@ -86,6 +81,23 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MatchSkeleton extends StatelessWidget {
+  const _MatchSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        SkeletonBlock(height: 218, radius: 26),
+        SizedBox(height: 28),
+        SkeletonBlock(height: 154, radius: 24),
+        SizedBox(height: 28),
+        SkeletonBlock(height: 260, radius: 22),
+      ],
     );
   }
 }
@@ -110,6 +122,7 @@ class _MatchContent extends StatelessWidget {
           decoration: BoxDecoration(
             color: ValcompColors.surface,
             borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: ValcompColors.border),
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -276,6 +289,9 @@ class _MatchContent extends StatelessWidget {
                             ? const Color(0xFF2E77D0)
                             : ValcompColors.red,
                         borderRadius: BorderRadius.circular(11),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
                       ),
                       child: Text(
                         '${round.round}',

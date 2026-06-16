@@ -127,7 +127,10 @@ class _MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: ValcompColors.surface,
-      borderRadius: BorderRadius.circular(24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: ValcompColors.border),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
@@ -226,7 +229,10 @@ class _StoreBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: ValcompColors.surface,
-      borderRadius: BorderRadius.circular(24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: ValcompColors.border),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
@@ -234,8 +240,9 @@ class _StoreBanner extends StatelessWidget {
           height: 154,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: ValcompColors.border),
             image: const DecorationImage(
-              image: AssetImage('assets/images/store-gun.png'),
+              image: AssetImage('assets/images/store-gun-v2.png'),
               fit: BoxFit.cover,
             ),
           ),
@@ -302,7 +309,10 @@ class _StatusFeature extends StatelessWidget {
         : 'A loja e os alertas estão prontos para consultar os dados disponíveis.';
     return Material(
       color: ValcompColors.surface,
-      borderRadius: BorderRadius.circular(24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: ValcompColors.border),
+      ),
       child: InkWell(
         onTap: !linked
             ? () => Navigator.push(context, valcompRoute(const LinkScreen()))
@@ -312,8 +322,9 @@ class _StatusFeature extends StatelessWidget {
           height: 292,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: ValcompColors.border),
             image: const DecorationImage(
-              image: AssetImage('assets/images/hero-agent.png'),
+              image: AssetImage('assets/images/hero-agent-v2.png'),
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
             ),

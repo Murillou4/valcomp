@@ -45,6 +45,7 @@ class StoreItemCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: ValcompColors.surface,
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: ValcompColors.border),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
@@ -104,7 +105,7 @@ class StoreItemCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: ValcompColors.red,
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '-${item.discountPercent}%',
@@ -143,7 +144,10 @@ class StoreItemCard extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.34),
+                        color: const Color(0xCC080D13),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(

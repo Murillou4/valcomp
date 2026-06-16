@@ -8,27 +8,42 @@
       name="description"
       content="Baixe o APK Android e o companion Windows do Valcomp para consultar a loja diaria do VALORANT e montar sua Wishlist."
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <meta property="og:title" content="Valcomp Downloads" />
+    <meta
+      property="og:description"
+      content="APK Android e companion Windows do Valcomp."
+    />
+    <meta property="og:image" content="./assets/store-gun-v2.png" />
+    <link rel="stylesheet" href="./styles.css?v=20260615" />
   </head>
   <body>
+    <a class="skip-link" href="#downloads">Pular para downloads</a>
     <main class="page">
       <section class="hero">
-        <p class="eyebrow">Valcomp beta</p>
-        <h1>Sua loja diaria do VALORANT no celular.</h1>
-        <p class="lead">
-          Instale o APK Android, abra o companion no Windows uma vez e vincule sua conta Riot
-          com um codigo curto. Depois disso, o Valcomp consulta sua loja diaria com seguranca,
-          mostra o Mercado Noturno, detalha suas partidas e acompanha as skins salvas na
-          Wishlist.
-        </p>
-        <div class="actions">
-          <a class="button primary" href="./downloads/valcomp-mobile.apk">Baixar APK Android</a>
-          <a class="button" href="./downloads/valcomp-companion-windows.exe">Baixar Companion Windows</a>
+        <div class="hero-copy reveal">
+          <p class="eyebrow">Valcomp beta</p>
+          <h1>Sua loja diaria do VALORANT no celular.</h1>
+          <p class="lead">
+            Instale o APK Android, abra o companion no Windows uma vez e vincule
+            sua conta Riot com um codigo curto. Depois disso, o Valcomp consulta
+            sua loja diaria com seguranca, mostra o Mercado Noturno, detalha suas
+            partidas e acompanha as skins salvas na Wishlist.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="./downloads/valcomp-mobile.apk">Baixar APK Android</a>
+            <a class="button" href="./downloads/valcomp-companion-windows.exe">Baixar Companion Windows</a>
+          </div>
+        </div>
+        <div class="hero-art reveal" aria-hidden="true">
+          <img src="./assets/hero-agent-v2.png" alt="" />
+          <div class="store-strip">
+            <img src="./assets/store-gun-v2.png" alt="" />
+          </div>
         </div>
       </section>
 
       <section class="grid">
-        <article class="card">
+        <article class="card reveal" style="--i: 0">
           <span class="step">1</span>
           <h2>Instale o app Android</h2>
           <p>
@@ -38,7 +53,7 @@
           </p>
         </article>
 
-        <article class="card">
+        <article class="card reveal" style="--i: 1">
           <span class="step">2</span>
           <h2>Gere o codigo</h2>
           <p>
@@ -47,7 +62,7 @@
           </p>
         </article>
 
-        <article class="card">
+        <article class="card reveal" style="--i: 2">
           <span class="step">3</span>
           <h2>Abra o companion</h2>
           <p>
@@ -57,7 +72,7 @@
           </p>
         </article>
 
-        <article class="card">
+        <article class="card reveal" style="--i: 3">
           <span class="step">4</span>
           <h2>Monte sua Wishlist</h2>
           <p>
@@ -70,23 +85,28 @@
         </article>
       </section>
 
-      <section class="panel">
-        <h2>Downloads</h2>
+      <section class="panel" id="downloads">
+        <div class="panel-heading">
+          <p class="eyebrow">arquivos publicados</p>
+          <h2>Downloads</h2>
+        </div>
         <div class="download-list">
-          <div>
+          <article>
             <h3>Valcomp Mobile APK</h3>
             <p>Arquivo: <code>valcomp-mobile.apk</code></p>
             <p>Versao Flutter 1.1.5</p>
-            <p>Tamanho: 54,907,500 bytes</p>
-            <p>SHA-256: <code>BDD5B306684265144955079C52F8B3F272D2212E93D718C936BDFA970EEB584E</code></p>
-          </div>
-          <div>
+            <p>Tamanho: 58,001,213 bytes</p>
+            <p>SHA-256: <code>B9C82D258FCE920E5DEBCF29D32C6EB6FCC34C3D51A2BE9220B30A3B1646FDA2</code></p>
+            <a class="text-link" href="./downloads/valcomp-mobile.apk">baixar apk</a>
+          </article>
+          <article>
             <h3>Valcomp Companion Windows</h3>
             <p>Arquivo: <code>valcomp-companion-windows.exe</code></p>
             <p>Versao Electron 1.1.2</p>
-            <p>Tamanho: 91,536,969 bytes</p>
-            <p>SHA-256: <code>1F53A2614D1536EA4C8016A9E0E23D966B935063E3E1D5F186EB1244E8609FC8</code></p>
-          </div>
+            <p>Tamanho: 91,537,465 bytes</p>
+            <p>SHA-256: <code>F7C826A9CBA950D8FC215BDCD4BB09470F9BE8921A49CFFA7FCC1B960AE6C00F</code></p>
+            <a class="text-link" href="./downloads/valcomp-companion-windows.exe">baixar companion</a>
+          </article>
         </div>
       </section>
 

@@ -61,14 +61,7 @@ class StatsScreen extends StatelessWidget {
                         action: 'Tentar novamente',
                         onAction: state.refreshAll,
                       )
-                    : const SizedBox(
-                        height: 360,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: ValcompColors.red,
-                          ),
-                        ),
-                      )
+                    : const SizedBox(child: _StatsSkeleton())
               else ...[
                 Container(
                   width: double.infinity,
@@ -76,6 +69,7 @@ class StatsScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: ValcompColors.surface,
                     borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: ValcompColors.border),
                   ),
                   child: Row(
                     children: [
@@ -183,6 +177,9 @@ class StatsScreen extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: ValcompColors.surface,
                                   borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: ValcompColors.border,
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
@@ -242,6 +239,33 @@ class StatsScreen extends StatelessWidget {
   }
 }
 
+class _StatsSkeleton extends StatelessWidget {
+  const _StatsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        SkeletonBlock(height: 146, radius: 24),
+        SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(child: SkeletonBlock(height: 94, radius: 20)),
+            SizedBox(width: 14),
+            Expanded(child: SkeletonBlock(height: 94, radius: 20)),
+            SizedBox(width: 14),
+            Expanded(child: SkeletonBlock(height: 94, radius: 20)),
+          ],
+        ),
+        SizedBox(height: 30),
+        SkeletonBlock(height: 76, radius: 18),
+        SizedBox(height: 10),
+        SkeletonBlock(height: 76, radius: 18),
+      ],
+    );
+  }
+}
+
 class _StatTile extends StatelessWidget {
   const _StatTile({required this.label, required this.value});
 
@@ -256,6 +280,7 @@ class _StatTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: ValcompColors.surface,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ValcompColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

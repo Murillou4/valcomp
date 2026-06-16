@@ -159,6 +159,7 @@ class _ModeSwitch extends StatelessWidget {
       decoration: BoxDecoration(
         color: ValcompColors.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: ValcompColors.border),
       ),
       child: Row(
         children: [
@@ -645,6 +646,7 @@ class _CatalogItem extends StatelessWidget {
             decoration: BoxDecoration(
               color: ValcompColors.surface,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: ValcompColors.border),
             ),
             child: Row(
               children: [
@@ -743,6 +745,7 @@ class _SavedList extends StatelessWidget {
             decoration: BoxDecoration(
               color: ValcompColors.surface,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: ValcompColors.border),
             ),
             child: Row(
               children: [
@@ -789,13 +792,10 @@ class _CatalogSkeleton extends StatelessWidget {
     return Column(
       children: List.generate(
         4,
-        (index) => Container(
+        (index) => const SkeletonBlock(
           height: 92,
-          margin: const EdgeInsets.only(bottom: 11),
-          decoration: BoxDecoration(
-            color: ValcompColors.surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
+          radius: 20,
+          margin: EdgeInsets.only(bottom: 11),
         ),
       ),
     );

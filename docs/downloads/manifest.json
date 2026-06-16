@@ -8,8 +8,8 @@
     "version": "1.1.5",
     "build": 9,
     "file": "valcomp-mobile.apk",
-    "size_bytes": 54907500,
-    "sha256": "BDD5B306684265144955079C52F8B3F272D2212E93D718C936BDFA970EEB584E",
+    "size_bytes": 58001213,
+    "sha256": "B9C82D258FCE920E5DEBCF29D32C6EB6FCC34C3D51A2BE9220B30A3B1646FDA2",
     "signer_sha256": "C9702855214494288B8356C18077E00A29313C09D930894DCFDCA34B7E5DA11F"
   },
   "desktop": {
@@ -17,8 +17,8 @@
     "framework": "Electron 42.4.0",
     "version": "1.1.2",
     "file": "valcomp-companion-windows.exe",
-    "size_bytes": 91536969,
-    "sha256": "1F53A2614D1536EA4C8016A9E0E23D966B935063E3E1D5F186EB1244E8609FC8",
+    "size_bytes": 91537465,
+    "sha256": "F7C826A9CBA950D8FC215BDCD4BB09470F9BE8921A49CFFA7FCC1B960AE6C00F",
     "signed": false
   }
 }

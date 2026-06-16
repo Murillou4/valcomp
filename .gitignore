@@ -17,3 +17,5 @@ figma-export/
 diagnostics/
 node_modules/
 release/
+.codex-remote-attachments/
+screenshots/

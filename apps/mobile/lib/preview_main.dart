@@ -7,6 +7,7 @@ import 'core/models.dart';
 import 'core/push_service.dart';
 import 'core/theme.dart';
 import 'screens/home_screen.dart';
+import 'screens/item_details_screen.dart';
 import 'screens/wishlist_screen.dart';
 
 Future<void> main() async {
@@ -22,14 +23,25 @@ class ValcompPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final wishlist = Uri.base.queryParameters['screen'] == 'wishlist';
+    final screen = Uri.base.queryParameters['screen'];
     return ChangeNotifierProvider<AppController>.value(
       value: controller,
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: buildValcompTheme(),
         home: Scaffold(
-          body: wishlist ? const WishlistScreen() : const HomeScreen(),
+          body: switch (screen) {
+            'wishlist' => const WishlistScreen(),
+            'item' => const ItemDetailsScreen(
+              itemId: 'd980c0c8-492b-b8df-2d91-af99a7707170',
+              name: 'Vandal Imortalizados',
+              image:
+                  'https://media.valorant-api.com/weaponskins/d980c0c8-492b-b8df-2d91-af99a7707170/displayicon.png',
+              tier: _selectTier,
+              knownPrice: 875,
+            ),
+            _ => const HomeScreen(),
+          },
         ),
       ),
     );
@@ -115,6 +127,20 @@ class PreviewController extends AppController {
   Future<void> removeWatch(String itemId) async {
     watches = watches.where((watch) => watch.itemId != itemId).toList();
     notifyListeners();
+  }
+
+  @override
+  Future<ItemStatus> getItemStatus(String itemId) async {
+    await Future<void>.delayed(const Duration(milliseconds: 260));
+    return ItemStatus(
+      itemId: itemId,
+      owned: false,
+      inDailyStore: true,
+      inNightMarket: false,
+      source: 'daily',
+      price: 875,
+      expiresAt: DateTime.now().toUtc().add(const Duration(hours: 11)),
+    );
   }
 }
 

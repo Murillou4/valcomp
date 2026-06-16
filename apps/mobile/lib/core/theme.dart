@@ -90,9 +90,36 @@ ThemeData buildValcompTheme() {
         backgroundColor: ValcompColors.red,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
       ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: ValcompColors.text,
+        minimumSize: const Size.fromHeight(52),
+        side: const BorderSide(color: ValcompColors.border),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: ValcompColors.text,
+        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        foregroundColor: ValcompColors.text,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: ValcompColors.surfaceRaised,
+      contentTextStyle: const TextStyle(color: ValcompColors.text),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
   );
 }

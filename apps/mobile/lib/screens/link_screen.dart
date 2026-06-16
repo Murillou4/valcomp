@@ -51,7 +51,7 @@ class _LinkScreenState extends State<LinkScreen> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/images/hero-agent.png',
+            'assets/images/hero-agent-v2.png',
             fit: BoxFit.cover,
             alignment: Alignment.topCenter,
           ),
