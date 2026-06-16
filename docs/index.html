@@ -3,140 +3,321 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Valcomp Downloads</title>
+    <title>Valcomp | Loja diária, wishlist e alertas para VALORANT</title>
     <meta
       name="description"
-      content="Baixe o APK Android e o companion Windows do Valcomp para consultar a loja diaria do VALORANT e montar sua Wishlist."
+      content="Teste o Valcomp: app companion para consultar sua loja diária do VALORANT, montar wishlist de skins e receber alertas no Android."
     />
-    <meta property="og:title" content="Valcomp Downloads" />
-    <meta
-      property="og:description"
-      content="APK Android e companion Windows do Valcomp."
-    />
-    <meta property="og:image" content="./assets/store-gun-v2.png" />
-    <link rel="stylesheet" href="./styles.css?v=20260615" />
+    <meta name="theme-color" content="#090e15" />
+    <link rel="preload" href="./assets/fonts/Asgard-ExtraBold.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="stylesheet" href="./styles.css" />
+    <script>
+      document.documentElement.classList.add("motion-ready");
+    </script>
   </head>
   <body>
-    <a class="skip-link" href="#downloads">Pular para downloads</a>
-    <main class="page">
-      <section class="hero">
-        <div class="hero-copy reveal">
-          <p class="eyebrow">Valcomp beta</p>
-          <h1>Sua loja diaria do VALORANT no celular.</h1>
-          <p class="lead">
-            Instale o APK Android, abra o companion no Windows uma vez e vincule
-            sua conta Riot com um codigo curto. Depois disso, o Valcomp consulta
-            sua loja diaria com seguranca, mostra o Mercado Noturno, detalha suas
-            partidas e acompanha as skins salvas na Wishlist.
-          </p>
-          <div class="actions">
-            <a class="button primary" href="./downloads/valcomp-mobile.apk">Baixar APK Android</a>
-            <a class="button" href="./downloads/valcomp-companion-windows.exe">Baixar Companion Windows</a>
+    <div class="site-shell">
+      <header class="site-header" data-reveal>
+        <a class="brand" href="#top" aria-label="Valcomp">
+          <img src="./assets/images/logo.png" alt="Valcomp" />
+        </a>
+        <nav class="nav-links" aria-label="Navegação principal">
+          <a href="#produto">Produto</a>
+          <a href="#fluxo">Como funciona</a>
+          <a href="#downloads">Downloads</a>
+        </nav>
+        <a class="header-cta" href="./downloads/valcomp-mobile.apk" download>Teste agora</a>
+      </header>
+
+      <main id="top">
+        <section class="hero" aria-labelledby="hero-title">
+          <div class="hero-media" aria-hidden="true">
+            <img class="hero-agent" src="./assets/images/hero-companion-art.webp" alt="" />
+            <div class="hero-scan"></div>
           </div>
-        </div>
-        <div class="hero-art reveal" aria-hidden="true">
-          <img src="./assets/hero-agent-v2.png" alt="" />
-          <div class="store-strip">
-            <img src="./assets/store-gun-v2.png" alt="" />
+
+          <div class="hero-grid">
+            <div class="hero-copy" data-reveal>
+              <p class="eyebrow">Valcomp beta</p>
+              <h1 id="hero-title">Valcomp</h1>
+              <p class="hero-subtitle">
+                O companion para ver sua loja diária do VALORANT no celular,
+                salvar skins na wishlist e receber alerta quando elas voltarem.
+              </p>
+              <div class="hero-actions" aria-label="Downloads principais">
+                <a class="button button-primary" href="./downloads/valcomp-mobile.apk" download>
+                  Teste agora
+                </a>
+                <a class="button button-secondary" href="./downloads/valcomp-companion-windows.exe" download>
+                  Baixar companion
+                </a>
+              </div>
+              <div class="trust-row" aria-label="Resumo do beta">
+                <span>Android APK 1.0.1</span>
+                <span>Windows companion</span>
+                <span>Código de 6 dígitos</span>
+              </div>
+            </div>
+
+            <div class="product-stage" data-reveal data-tilt>
+              <div class="phone-device" aria-label="Prévia do app Valcomp">
+                <div class="phone-speaker"></div>
+                <div class="phone-screen">
+                  <div class="phone-topbar">
+                    <span>Olá, Cda</span>
+                    <div class="round-icons">
+                      <i></i>
+                      <i></i>
+                    </div>
+                  </div>
+                  <div class="metric-grid">
+                    <div class="metric-tile">
+                      <small>Meu rank</small>
+                      <strong>15 RR</strong>
+                      <span>Platina 2</span>
+                    </div>
+                    <div class="metric-tile">
+                      <small>Alertas ativos</small>
+                      <strong>3</strong>
+                      <span>skins monitoradas</span>
+                    </div>
+                  </div>
+                  <div class="store-preview">
+                    <img src="./assets/images/store-weapon-premium.webp" alt="" />
+                    <strong>Ver minha loja</strong>
+                  </div>
+                  <div class="wishlist-preview">
+                    <div>
+                      <span class="pill-dot"></span>
+                      <small>Wishlist ativa</small>
+                    </div>
+                    <strong>Kuronami, Prelude, Reaver</strong>
+                  </div>
+                  <div class="bottom-nav" aria-hidden="true">
+                    <span></span>
+                    <span class="active"></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+
+              <aside class="companion-card" aria-label="Prévia do companion Windows">
+                <div class="companion-status">
+                  <span></span>
+                  Companion online
+                </div>
+                <h2>Vincule pelo PC onde você joga.</h2>
+                <p>Abra o Riot Client, cole o código do celular e deixe o Valcomp buscar a loja com segurança.</p>
+                <div class="code-box" aria-label="Código de vínculo ilustrativo">
+                  <span>8</span><span>4</span><span>7</span><span>2</span><span>1</span><span>9</span>
+                </div>
+              </aside>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <section class="grid">
-        <article class="card reveal" style="--i: 0">
-          <span class="step">1</span>
-          <h2>Instale o app Android</h2>
-          <p>
-            Baixe o APK, permita a instalacao de apps externos no Android e abra o Valcomp.
-            Crie uma conta ou entre com email e senha. Por enquanto nao usamos Google,
-            GitHub ou Apple.
-          </p>
-        </article>
+          <div class="hero-marquee" aria-hidden="true">
+            <div>
+              <span>Loja diária</span>
+              <span>Wishlist</span>
+              <span>Alertas</span>
+              <span>Companion Windows</span>
+              <span>Loja diária</span>
+              <span>Wishlist</span>
+              <span>Alertas</span>
+              <span>Companion Windows</span>
+            </div>
+          </div>
+        </section>
 
-        <article class="card reveal" style="--i: 1">
-          <span class="step">2</span>
-          <h2>Gere o codigo</h2>
-          <p>
-            No app Valcomp, entre em <strong>Vincular</strong> e toque em gerar codigo.
-            O codigo tem 6 numeros e expira rapido de proposito.
-          </p>
-        </article>
+        <section class="section product-section" id="produto" aria-labelledby="produto-title">
+          <div class="section-heading" data-reveal>
+            <p class="eyebrow">Produto</p>
+            <h2 id="produto-title">Feito para quem quer saber quando a skin aparece.</h2>
+            <p>
+              O Valcomp junta o celular e o PC em um fluxo curto: você vincula uma vez,
+              vê sua rotação e deixa a wishlist trabalhar por você.
+            </p>
+          </div>
 
-        <article class="card reveal" style="--i: 2">
-          <span class="step">3</span>
-          <h2>Abra o companion</h2>
-          <p>
-            No Windows, baixe e abra <strong>Valcomp Companion.exe</strong>. Nao e preciso
-            instalar nem extrair arquivos. Deixe o Riot Client ou VALORANT aberto e logado,
-            cole o codigo do celular e clique em vincular.
-          </p>
-        </article>
+          <div class="feature-layout">
+            <article class="feature-panel feature-panel-wide" data-reveal data-tilt>
+              <div class="panel-copy">
+                <span class="feature-kicker">Loja</span>
+                <h3>Mercado diário no bolso.</h3>
+                <p>
+                  Consulte os itens da sua conta pelo app e veja a rotação sem abrir o jogo só para conferir a loja.
+                </p>
+              </div>
+              <div class="skin-stack" aria-hidden="true">
+                <div class="skin-card skin-card-one">
+                  <img src="./assets/images/store-weapon-premium.webp" alt="" />
+                  <strong>Stinger Prelúdio do Caos</strong>
+                </div>
+                <div class="skin-card skin-card-two">
+                  <img src="./assets/images/store-weapon-premium.webp" alt="" />
+                  <strong>Ares Floreteira</strong>
+                </div>
+              </div>
+            </article>
 
-        <article class="card reveal" style="--i: 3">
-          <span class="step">4</span>
-          <h2>Monte sua Wishlist</h2>
-          <p>
-            No app Valcomp, abra a <strong>Wishlist</strong>, busque por skin ou arma e use
-            os filtros de categoria, arma, raridade e ordenacao. Permita as notificacoes no
-            Android. Quando uma skin monitorada aparecer na sua loja, o backend envia um
-            alerta pelo Firebase Cloud Messaging. A tela
-            <strong>Alertas</strong> possui um botao para testar a entrega.
-          </p>
-        </article>
-      </section>
+            <article class="feature-panel" data-reveal>
+              <span class="feature-kicker">Wishlist</span>
+              <h3>Salve o que você está caçando.</h3>
+              <p>
+                Busque skins pelo nome, adicione à lista e acompanhe tudo em uma tela simples.
+              </p>
+              <div class="mini-search" aria-hidden="true">
+                <span></span>
+                <strong>Buscar skin pelo nome</strong>
+              </div>
+            </article>
 
-      <section class="panel" id="downloads">
-        <div class="panel-heading">
-          <p class="eyebrow">arquivos publicados</p>
-          <h2>Downloads</h2>
-        </div>
-        <div class="download-list">
-          <article>
-            <h3>Valcomp Mobile APK</h3>
-            <p>Arquivo: <code>valcomp-mobile.apk</code></p>
-            <p>Versao Flutter 1.1.5</p>
-            <p>Tamanho: 58,001,213 bytes</p>
-            <p>SHA-256: <code>B9C82D258FCE920E5DEBCF29D32C6EB6FCC34C3D51A2BE9220B30A3B1646FDA2</code></p>
-            <a class="text-link" href="./downloads/valcomp-mobile.apk">baixar apk</a>
-          </article>
-          <article>
-            <h3>Valcomp Companion Windows</h3>
-            <p>Arquivo: <code>valcomp-companion-windows.exe</code></p>
-            <p>Versao Electron 1.1.2</p>
-            <p>Tamanho: 91,537,465 bytes</p>
-            <p>SHA-256: <code>F7C826A9CBA950D8FC215BDCD4BB09470F9BE8921A49CFFA7FCC1B960AE6C00F</code></p>
-            <a class="text-link" href="./downloads/valcomp-companion-windows.exe">baixar companion</a>
-          </article>
-        </div>
-      </section>
+            <article class="feature-panel" data-reveal>
+              <span class="feature-kicker">Alertas</span>
+              <h3>Notificação quando interessa.</h3>
+              <p>
+                O backend compara sua wishlist com sua loja e envia o alerta pelo Firebase Cloud Messaging.
+              </p>
+              <div class="alert-chip" aria-hidden="true">
+                <span></span>
+                Skin encontrada
+              </div>
+            </article>
+          </div>
+        </section>
 
-      <section class="panel subtle">
-        <h2>Aviso do Windows</h2>
+        <section class="section flow-section" id="fluxo" aria-labelledby="fluxo-title">
+          <div class="section-heading compact" data-reveal>
+            <p class="eyebrow">Fluxo</p>
+            <h2 id="fluxo-title">Do download ao alerta em poucos passos.</h2>
+          </div>
+
+          <div class="flow-track" data-reveal>
+            <div class="flow-line" aria-hidden="true"></div>
+            <article class="flow-step">
+              <span>01</span>
+              <h3>Instale o APK</h3>
+              <p>Baixe o app Android e entre com email e senha.</p>
+            </article>
+            <article class="flow-step">
+              <span>02</span>
+              <h3>Gere o código</h3>
+              <p>No celular, abra Vincular e gere um código temporário.</p>
+            </article>
+            <article class="flow-step">
+              <span>03</span>
+              <h3>Abra o companion</h3>
+              <p>No Windows, com Riot Client ou VALORANT logado, cole o código.</p>
+            </article>
+            <article class="flow-step">
+              <span>04</span>
+              <h3>Receba alertas</h3>
+              <p>Monte sua wishlist e deixe o Valcomp avisar quando uma skin aparecer.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section proof-section" aria-labelledby="proof-title">
+          <div class="proof-copy" data-reveal>
+            <p class="eyebrow">Companion elite</p>
+            <h2 id="proof-title">Simples para testar. Claro o bastante para confiar.</h2>
+            <p>
+              O download fica direto, o vínculo é explicado sem ruído e os avisos técnicos
+              aparecem no lugar certo. Você entende o valor antes de chegar nos hashes.
+            </p>
+          </div>
+          <div class="proof-grid" data-reveal>
+            <div>
+              <strong>Conta privada</strong>
+              <span>A loja só aparece depois do vínculo pelo PC.</span>
+            </div>
+            <div>
+              <strong>Código curto</strong>
+              <span>O código expira rápido de propósito.</span>
+            </div>
+            <div>
+              <strong>Sem instalação no PC</strong>
+              <span>Baixe, abra o companion e vincule.</span>
+            </div>
+            <div>
+              <strong>Beta transparente</strong>
+              <span>Hashes e aviso do Windows continuam disponíveis.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section downloads-section" id="downloads" aria-labelledby="downloads-title">
+          <div class="section-heading" data-reveal>
+            <p class="eyebrow">Downloads</p>
+            <h2 id="downloads-title">Teste agora.</h2>
+            <p>
+              Baixe o app no Android e o companion no Windows. O companion é usado para vincular
+              sua conta Riot ao celular.
+            </p>
+          </div>
+
+          <div class="download-grid">
+            <article class="download-card" data-reveal>
+              <span class="download-type">Android</span>
+              <h3>Valcomp Mobile APK</h3>
+              <p>Arquivo: <code>valcomp-mobile.apk</code></p>
+              <p>Versão Flutter 1.1.5</p>
+              <p>Tamanho: 58,001,213 bytes</p>
+              <a class="button button-primary" href="./downloads/valcomp-mobile.apk" download>Teste agora</a>
+              <details>
+                <summary>Ver SHA-256</summary>
+                <code>B9C82D258FCE920E5DEBCF29D32C6EB6FCC34C3D51A2BE9220B30A3B1646FDA2</code>
+              </details>
+            </article>
+
+            <article class="download-card download-card-dark" data-reveal>
+              <span class="download-type">Windows</span>
+              <h3>Valcomp Companion</h3>
+              <p>Arquivo: <code>valcomp-companion-windows.exe</code></p>
+              <p>Versão Electron 1.1.2</p>
+              <p>Abra no PC onde o Riot Client ou VALORANT já está logado.</p>
+              <p>Tamanho: 91,537,465 bytes</p>
+              <a class="button button-secondary" href="./downloads/valcomp-companion-windows.exe" download>
+                Baixar companion
+              </a>
+              <details>
+                <summary>Ver SHA-256</summary>
+                <code>F7C826A9CBA950D8FC215BDCD4BB09470F9BE8921A49CFFA7FCC1B960AE6C00F</code>
+              </details>
+            </article>
+          </div>
+        </section>
+
+        <section class="section notes-section" aria-labelledby="notes-title">
+          <div class="note-panel" data-reveal>
+            <h2 id="notes-title">Aviso do Windows</h2>
+            <p>
+              Esta versão beta ainda não possui certificado comercial de assinatura de código.
+              Por isso, o SmartScreen pode mostrar <strong>Fornecedor desconhecido</strong>.
+              Confira se o arquivo foi baixado desta página e valide o SHA-256 antes de escolher
+              <strong>Mais informações &gt; Executar assim mesmo</strong>.
+            </p>
+          </div>
+          <div class="note-panel" data-reveal>
+            <h2>Conexão do Valcomp</h2>
+            <p>
+              Servidor usado pelo app:
+              <a href="https://valcomp-api-cda2.fly.dev/health">https://valcomp-api-cda2.fly.dev</a>.
+              O endereço já vem preenchido no app e no companion.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <img src="./assets/images/logo.png" alt="Valcomp" />
         <p>
-          Esta versao beta ainda nao possui certificado comercial de assinatura de codigo.
-          Por isso, o SmartScreen pode mostrar <strong>Fornecedor desconhecido</strong>.
-          Confira se o arquivo foi baixado desta pagina e valide o SHA-256 acima antes de
-          escolher <strong>Mais informacoes &gt; Executar assim mesmo</strong>.
+          Valcomp é um projeto independente e não é afiliado à Riot Games.
+          VALORANT é marca da Riot Games, Inc.
         </p>
-        <p>
-          O executavel possui nome, versao e icone oficiais, mas somente uma assinatura
-          digital confiavel pode remover esse aviso de forma consistente.
-        </p>
-      </section>
+      </footer>
+    </div>
 
-      <section class="panel subtle">
-        <h2>Conexao do Valcomp</h2>
-        <p>
-          Servidor usado pelo app:
-          <a href="https://valcomp-api-cda2.fly.dev/health">https://valcomp-api-cda2.fly.dev</a>.
-          Voce nao precisa configurar nada aqui. Esse endereco ja vem preenchido no app e
-          no companion.
-        </p>
-        <p>
-          Se o app pedir para vincular de novo, abra o companion no PC logado na Riot,
-          gere outro codigo no celular e repita o processo.
-        </p>
-      </section>
-    </main>
+    <script src="./scripts.js"></script>
   </body>
 </html>
