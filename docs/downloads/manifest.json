@@ -5,20 +5,20 @@
     "name": "Valcomp Mobile APK",
     "framework": "Flutter 3.41.9",
     "package": "com.cda2.valcomp",
-    "version": "1.1.4",
-    "build": 8,
+    "version": "1.1.5",
+    "build": 9,
     "file": "valcomp-mobile.apk",
     "size_bytes": 54907500,
-    "sha256": "134E38CDA60F2970A2DD50470430AFB95D15F10983E4B875F221519484859D91",
+    "sha256": "BDD5B306684265144955079C52F8B3F272D2212E93D718C936BDFA970EEB584E",
     "signer_sha256": "C9702855214494288B8356C18077E00A29313C09D930894DCFDCA34B7E5DA11F"
   },
   "desktop": {
     "name": "Valcomp Companion Windows",
     "framework": "Electron 42.4.0",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "file": "valcomp-companion-windows.exe",
-    "size_bytes": 91535208,
-    "sha256": "25FB2892A8C3F748F0F09715FAA5AFF6EF6AD5880F9E320C37045B0CEB807B3F",
+    "size_bytes": 91536969,
+    "sha256": "1F53A2614D1536EA4C8016A9E0E23D966B935063E3E1D5F186EB1244E8609FC8",
     "signed": false
   }
 }

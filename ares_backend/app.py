@@ -950,14 +950,26 @@ async def normalize_link_payload(
             "client_version": payload.client_version or svc.settings.default_client_version,
         }
     )
-    needs_refresh = not (payload.access_token and payload.entitlement_token and payload.puuid)
-    if needs_refresh and (payload.ssid or payload.cookies.get("ssid")):
+    has_reauth_cookie = bool(payload.ssid or payload.cookies.get("ssid"))
+    token_needs_refresh = bool(
+        payload.access_token
+        and access_token_needs_refresh(payload.access_token, leeway_seconds=300)
+    )
+    needs_refresh = (
+        token_needs_refresh
+        or not (payload.access_token and payload.entitlement_token and payload.puuid)
+    )
+    if needs_refresh and has_reauth_cookie:
         payload = await svc.riot_auth.refresh_payload(payload)
+    elif token_needs_refresh:
+        raise RelinkRequiredError(
+            "A sessão local da Riot expirou. Detecte a Riot novamente no Companion."
+        )
     if not payload.puuid or not payload.region or not payload.shard:
         raise RelinkRequiredError("Companion did not send PUUID, region and shard.")
     if payload.access_token and access_token_needs_refresh(payload.access_token, leeway_seconds=300):
         raise RelinkRequiredError(
-            "Companion sent an expired Riot token. Detect Riot again before linking."
+            "A sessão Riot renovada ainda veio expirada. Abra o VALORANT e detecte novamente."
         )
     return payload
 

@@ -28,6 +28,20 @@ class FakeRiotAuth:
             tag_line="BR1",
         )
 
+    async def refresh_payload(self, payload: RiotCredentialPayload) -> RiotCredentialPayload:
+        return payload.model_copy(
+            update={
+                "access_token": "fresh-access",
+                "entitlement_token": "fresh-entitlement",
+                "id_token": "fresh-id",
+                "puuid": payload.puuid or "puuid-123",
+                "region": payload.region or "br",
+                "shard": payload.shard or "na",
+                "game_name": payload.game_name or "Player",
+                "tag_line": payload.tag_line or "BR1",
+            }
+        )
+
 
 class FakeRiotClient:
     async def storefront(self, session: RiotSession) -> dict[str, Any]:
@@ -443,6 +457,38 @@ def test_link_complete_rejects_expired_riot_access_token() -> None:
         },
     )
     assert retry.status_code == 200
+
+
+def test_link_complete_refreshes_expired_token_when_ssid_is_available() -> None:
+    client, _, _, _ = make_client()
+    expired_token = jwt.encode(
+        {"exp": datetime.now(UTC) - timedelta(minutes=1)},
+        "unused-test-key",
+        algorithm="HS256",
+    )
+
+    start = client.post("/riot/link/start", headers=auth_headers())
+    assert start.status_code == 200
+
+    complete = client.post(
+        "/riot/link/complete",
+        json={
+            "link_code": start.json()["link_code"],
+            "riot": {
+                "ssid": "local-ssid",
+                "cookies": {"ssid": "local-ssid"},
+                "access_token": expired_token,
+                "entitlement_token": "expired-entitlement",
+                "puuid": "puuid-123",
+                "region": "br",
+                "shard": "na",
+                "client_version": "release-test",
+            },
+        },
+    )
+
+    assert complete.status_code == 200
+    assert complete.json()["riot_account"]["puuid"] == "puuid-123"
 
 
 def test_daily_store_wallet_items_and_status_routes() -> None:

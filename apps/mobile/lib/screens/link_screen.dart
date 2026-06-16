@@ -319,16 +319,7 @@ class _LinkScreenState extends State<LinkScreen> {
 
   Future<void> _verifyLinked({required bool manual}) async {
     if (_pollInFlight || _successHandled) return;
-    if (_codeExpired()) {
-      _pollTimer?.cancel();
-      setState(() {
-        _polling = false;
-        _linkError =
-            'Esse código expirou. Gere um novo código e tente novamente.';
-        _linkErrorDetails = '';
-      });
-      return;
-    }
+    final expired = _codeExpired();
     _pollInFlight = true;
     if (manual) {
       setState(() {
@@ -344,6 +335,14 @@ class _LinkScreenState extends State<LinkScreen> {
       if (!mounted) return;
       if (linked) {
         _finishWithSuccess();
+      } else if (expired) {
+        _pollTimer?.cancel();
+        setState(() {
+          _polling = false;
+          _linkError =
+              'Esse código expirou. Gere um novo código e tente novamente.';
+          _linkErrorDetails = '';
+        });
       } else if (manual) {
         setState(() {
           _linkError =

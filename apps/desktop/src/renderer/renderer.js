@@ -66,7 +66,9 @@ async function detect() {
   if (result.ok) {
     detected = true;
     const data = result.data;
-    const refreshHint = data.hasSsid
+    const refreshHint = data.refreshOnServer
+      ? "A sessão local venceu, mas o Valcomp vai renová-la com segurança ao vincular."
+      : data.hasSsid
       ? `A sessão está pronta para continuar. Validade: ${Math.floor(data.secondsLeft / 60)} min.`
       : "A conta foi encontrada, mas talvez seja preciso vincular novamente no futuro.";
     setStatus(

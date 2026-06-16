@@ -260,8 +260,29 @@ class AppController extends ChangeNotifier {
       final linkedNow = account != null && _isFreshLink(account);
       if (linkedNow) {
         me = nextMe;
-        store = DailyStore.fromJson(await api.get('/valorant/store/daily'));
-        nightMarket = NightMarket.fromDaily(store!);
+        try {
+          store = DailyStore.fromJson(await api.get('/valorant/store/daily'));
+          nightMarket = NightMarket.fromDaily(store!);
+          storeError = '';
+          storeErrorDetails = '';
+        } on ApiException catch (exception) {
+          if (exception.relinkRequired) {
+            relinkRequired = true;
+            error = exception.userMessage;
+            errorDetails = exception.fullDetails;
+            await DiagnosticLog.instance.record(
+              level: 'warning',
+              category: 'link',
+              message: 'Vínculo Riot confirmou, mas a sessão remota ainda pediu revínculo.',
+              context: {'linked': true},
+              stackTrace: exception.fullDetails,
+            );
+            if (!silent) notifyListeners();
+            return false;
+          }
+          storeError = exception.userMessage;
+          storeErrorDetails = exception.fullDetails;
+        }
         relinkRequired = false;
         linkCode = '';
         linkStartedAt = null;

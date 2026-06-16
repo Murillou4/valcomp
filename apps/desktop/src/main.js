@@ -305,7 +305,8 @@ async function detectRiotSession() {
     throw new Error("Não foi possível identificar a região da sua conta Riot.");
   }
   const timing = jwtTiming(accessToken);
-  if (timing.secondsLeft < 300) {
+  const refreshOnServer = timing.secondsLeft < 300 && Boolean(ssid);
+  if (timing.secondsLeft < 300 && !ssid) {
     logEvent("warning", "riot_detection_expired_token", {
       seconds_left: timing.secondsLeft,
       expires_at: timing.expiresAt,
@@ -317,8 +318,8 @@ async function detectRiotSession() {
   riotPayload = {
     ssid,
     cookies: ssid ? { ssid } : {},
-    access_token: accessToken,
-    entitlement_token: entitlementToken,
+    access_token: refreshOnServer ? "" : accessToken,
+    entitlement_token: refreshOnServer ? "" : entitlementToken,
     puuid,
     region,
     shard,
@@ -339,6 +340,7 @@ async function detectRiotSession() {
     shard: shard.toUpperCase(),
     hasSsid: Boolean(ssid),
     secondsLeft: timing.secondsLeft,
+    refreshOnServer,
   };
 }
 
@@ -352,11 +354,12 @@ function validateBackendUrl(value) {
 }
 
 async function submitLink({ code, backendUrl }) {
-  if (!riotPayload) {
-    throw new Error("Detecte sua conta Riot antes de vincular.");
-  }
   if (!/^\d{6}$/.test(String(code || ""))) {
     throw new Error("Digite o código de 6 números mostrado no celular.");
+  }
+  await detectRiotSession();
+  if (!riotPayload) {
+    throw new Error("Detecte sua conta Riot antes de vincular.");
   }
   const baseUrl = validateBackendUrl(backendUrl);
   const requestId = `desk-${randomUUID()}`;
