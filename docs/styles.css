@@ -67,40 +67,49 @@ html {
 }
 
 body {
+  position: relative;
   min-width: 320px;
   margin: 0;
   max-width: 100vw;
   overflow-x: hidden;
-  background:
-    linear-gradient(120deg, rgba(255, 70, 85, 0.1) 0 10%, transparent 10% 100%),
-    linear-gradient(180deg, #090e15 0%, #070b10 46%, #0a1018 100%);
+  background: #070b10;
   color: var(--text);
   font-family: var(--font-ui);
+  isolation: isolate;
   letter-spacing: 0;
 }
 
 body::before {
   position: fixed;
   inset: 0;
-  z-index: -2;
+  z-index: 0;
   pointer-events: none;
   content: "";
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 78%);
+  background:
+    linear-gradient(90deg, rgba(7, 11, 16, 0.9) 0%, rgba(7, 11, 16, 0.72) 34%, rgba(7, 11, 16, 0.58) 64%, rgba(7, 11, 16, 0.88) 100%),
+    linear-gradient(180deg, rgba(7, 11, 16, 0.14) 0%, rgba(7, 11, 16, 0.72) 64%, #070b10 100%),
+    url("./assets/images/site-backdrop-wide.webp") center top / cover no-repeat,
+    radial-gradient(circle at 72% 18%, rgba(255, 70, 85, 0.14), transparent 32%),
+    #070b10;
+  opacity: 0.94;
 }
 
 body::after {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   content: "";
   background:
-    linear-gradient(132deg, transparent 0 58%, rgba(255, 70, 85, 0.07) 58% 58.4%, transparent 58.4% 100%),
-    linear-gradient(48deg, transparent 0 68%, rgba(101, 214, 163, 0.05) 68% 68.3%, transparent 68.3% 100%);
+    radial-gradient(circle at 70% 18%, rgba(255, 70, 85, 0.11), transparent 26%),
+    radial-gradient(circle at 46% 58%, rgba(101, 214, 163, 0.055), transparent 34%),
+    linear-gradient(132deg, transparent 0 52%, rgba(255, 70, 85, 0.07) 52% 52.35%, transparent 52.35% 100%),
+    linear-gradient(48deg, transparent 0 70%, rgba(101, 214, 163, 0.045) 70% 70.25%, transparent 70.25% 100%),
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(180deg, transparent 0%, rgba(7, 11, 16, 0.34) 44%, rgba(7, 11, 16, 0.9) 100%);
+  background-size: auto, auto, auto, auto, 72px 72px, 72px 72px, auto;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.98), rgba(0, 0, 0, 0.9) 52%, rgba(0, 0, 0, 0.72));
 }
 
 a {
@@ -150,6 +159,8 @@ code {
 }
 
 .site-shell {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 100vw;
   overflow: hidden;
@@ -285,30 +296,40 @@ code {
 
 .hero-media {
   position: absolute;
-  inset: 0 0 auto auto;
-  width: 58vw;
-  min-width: 620px;
-  height: 96%;
+  inset: 0;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
   pointer-events: none;
-  opacity: 0.56;
+  opacity: 1;
 }
 
-.hero-agent {
+.hero-media::before,
+.hero-media::after {
   position: absolute;
-  right: -140px;
-  bottom: -28px;
-  width: 760px;
-  height: min(760px, 88dvh);
-  object-fit: cover;
-  object-position: center right;
-  filter: saturate(0.92) contrast(1.06);
-  mask-image: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.88) 20%, rgba(0, 0, 0, 0.96) 78%, transparent);
+  inset: 0;
+  z-index: 2;
+  content: "";
+}
+
+.hero-media::before {
+  background:
+    linear-gradient(90deg, rgba(7, 11, 16, 0.48) 0%, transparent 42%, rgba(7, 11, 16, 0.32) 100%),
+    linear-gradient(180deg, transparent 0%, rgba(7, 11, 16, 0.48) 82%, #070b10 100%);
+}
+
+.hero-media::after {
+  background:
+    linear-gradient(112deg, transparent 0 60%, rgba(255, 70, 85, 0.12) 60% 60.35%, transparent 60.35% 100%),
+    linear-gradient(52deg, transparent 0 72%, rgba(255, 255, 255, 0.08) 72% 72.15%, transparent 72.15% 100%);
+  opacity: 0.9;
 }
 
 .hero-scan {
   position: absolute;
   top: 16%;
-  right: 90px;
+  right: 18%;
+  z-index: 3;
   width: 2px;
   height: 58%;
   background: linear-gradient(180deg, transparent, rgba(101, 214, 163, 0.76), transparent);
@@ -1593,6 +1614,7 @@ details code {
   .hero-media {
     min-width: 0;
     width: 100%;
+    height: 100%;
     opacity: 0.22;
   }
 
@@ -1719,6 +1741,16 @@ details code {
 }
 
 @media (max-width: 520px) {
+  body::before {
+    background:
+      linear-gradient(90deg, rgba(7, 11, 16, 0.86), rgba(7, 11, 16, 0.66) 58%, rgba(7, 11, 16, 0.9)),
+      linear-gradient(180deg, rgba(9, 14, 21, 0.12) 0%, #070b10 90%),
+      url("./assets/images/site-backdrop-wide.webp") center top / cover no-repeat,
+      radial-gradient(circle at 72% 14%, rgba(255, 70, 85, 0.12), transparent 32%),
+      #070b10;
+    opacity: 0.88;
+  }
+
   .site-header {
     min-height: 68px;
   }
@@ -1745,15 +1777,10 @@ details code {
   }
 
   .hero-media {
-    right: -72px;
-    width: 310px;
-    height: 560px;
-    opacity: 0.16;
-  }
-
-  .hero-agent {
-    width: 300px;
-    height: 560px;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.14;
   }
 
   .eyebrow {
