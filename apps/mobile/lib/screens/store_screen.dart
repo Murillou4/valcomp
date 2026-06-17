@@ -205,7 +205,10 @@ class _StoreTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        Feedback.forTap(context);
+        onTap();
+      },
       child: Column(
         children: [
           AnimatedDefaultTextStyle(

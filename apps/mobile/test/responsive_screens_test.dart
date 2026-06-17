@@ -8,6 +8,7 @@ import 'package:valcomp/core/theme.dart';
 import 'package:valcomp/preview_main.dart';
 import 'package:valcomp/screens/home_screen.dart';
 import 'package:valcomp/screens/item_details_screen.dart';
+import 'package:valcomp/screens/link_screen.dart';
 import 'package:valcomp/screens/wishlist_screen.dart';
 import 'package:valcomp/widgets/store_item_card.dart';
 
@@ -49,6 +50,14 @@ void main() {
     expect(find.text('Explorar'), findsOneWidget);
     expect(find.text('Categorias'), findsOneWidget);
     expect(find.text('Armas'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Link screen exposes direct mobile Riot login', (tester) async {
+    await pumpScreen(tester, const LinkScreen(), size: const Size(393, 852));
+
+    expect(find.text('Entrar pela Riot neste celular'), findsOneWidget);
+    expect(find.text('Mostrar opções avançadas'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

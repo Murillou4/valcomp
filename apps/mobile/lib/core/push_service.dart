@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -20,7 +21,10 @@ class PushService {
   static bool _backgroundHandlerInstalled = false;
   static bool _initialized = false;
   StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<RemoteMessage>? _openSubscription;
+  final Set<String> _handledOpenIds = <String>{};
   ApiClient? _api;
+  VoidCallback? _onOpenStore;
 
   static bool get configured =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -41,17 +45,19 @@ class PushService {
     _backgroundHandlerInstalled = true;
   }
 
-  Future<void> register(ApiClient api) async {
+  Future<void> register(ApiClient api, {VoidCallback? onOpenStore}) async {
     if (kIsWeb ||
         defaultTargetPlatform != TargetPlatform.android ||
         !await initializeFirebase()) {
       return;
     }
     _api = api;
+    _onOpenStore = onOpenStore ?? _onOpenStore;
     if (!_initialized) {
-      const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const android = AndroidInitializationSettings('ic_notification');
       await _notifications.initialize(
         settings: const InitializationSettings(android: android),
+        onDidReceiveNotificationResponse: _handleLocalNotificationTap,
       );
       const channel = AndroidNotificationChannel(
         'skin_alerts',
@@ -77,6 +83,13 @@ class PushService {
     if (permission.authorizationStatus == AuthorizationStatus.denied) return;
     final token = await messaging.getToken();
     if (token != null) await _registerToken(token);
+    _openSubscription ??= FirebaseMessaging.onMessageOpenedApp.listen(
+      _handleRemoteMessageOpen,
+    );
+    final initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleRemoteMessageOpen(initialMessage);
+    }
     _tokenRefreshSubscription ??= messaging.onTokenRefresh.listen((
       refreshedToken,
     ) async {
@@ -120,9 +133,37 @@ class PushService {
               'Avisa quando uma skin desejada aparece na sua loja.',
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: 'ic_notification',
         ),
       ),
+      payload: jsonEncode(message.data),
     );
+  }
+
+  void _handleRemoteMessageOpen(RemoteMessage message) {
+    final id = message.messageId ?? message.sentTime?.toIso8601String() ?? '';
+    if (id.isNotEmpty && !_handledOpenIds.add(id)) return;
+    _handleNotificationData(message.data);
+  }
+
+  void _handleLocalNotificationTap(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload == null || payload.isEmpty) return;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        _handleNotificationData(Map<String, dynamic>.from(decoded));
+      }
+    } on FormatException {
+      return;
+    }
+  }
+
+  void _handleNotificationData(Map<String, dynamic> data) {
+    final type = data['type']?.toString() ?? '';
+    final route = data['route']?.toString() ?? data['screen']?.toString() ?? '';
+    if (type == 'skin_store_match' || route == 'store') {
+      _onOpenStore?.call();
+    }
   }
 }

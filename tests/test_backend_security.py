@@ -7,7 +7,12 @@ import pytest
 
 from ares_backend.auth import SupabaseAuth
 from ares_backend.errors import RelinkRequiredError, UnauthorizedError
-from ares_backend.riot import RiotRemoteClient, RiotSession, access_token_needs_refresh
+from ares_backend.riot import (
+    RiotAuthService,
+    RiotRemoteClient,
+    RiotSession,
+    access_token_needs_refresh,
+)
 from ares_backend.security import CryptoService, redact_secret
 from ares_backend.settings import BackendSettings
 
@@ -97,6 +102,45 @@ def test_bad_claims_from_riot_becomes_relink_required() -> None:
 
         with pytest.raises(RelinkRequiredError):
             await client.mmr(session)
+
+        await http.aclose()
+
+    asyncio.run(run())
+
+
+def test_mobile_web_login_entitlement_403_becomes_relink_required() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":
+            assert request.url.params.get("client_id") == "riot-client"
+            assert request.url.params.get("redirect_uri") == "http://localhost/redirect"
+            return httpx.Response(
+                302,
+                headers={
+                    "location": (
+                        "http://localhost/redirect#access_token=riot-client-access"
+                        "&id_token=riot-client-id"
+                    )
+                },
+            )
+        if request.url.host == "entitlements.auth.riotgames.com":
+            return httpx.Response(403, json={"error": "forbidden"})
+        return httpx.Response(200, json={})
+
+    async def run() -> None:
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        service = RiotAuthService(
+            BackendSettings(app_secret_key="unit-test-secret"),
+            CryptoService("unit-test-secret"),
+            client=http,
+        )
+
+        with pytest.raises(RelinkRequiredError):
+            await service.payload_from_web_login(
+                access_token="web-access-token",
+                id_token="web-id-token",
+                ssid="ssid-cookie",
+                cookies={"ssid": "ssid-cookie"},
+            )
 
         await http.aclose()
 

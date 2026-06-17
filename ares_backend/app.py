@@ -59,6 +59,7 @@ from .schemas import (
     ProfilePatch,
     PushDeviceRegisterRequest,
     RefreshTokenRequest,
+    RiotMobileLoginCompleteRequest,
     RiotAccount,
     RiotCredentialPayload,
     RiotCredentialRecord,
@@ -411,27 +412,25 @@ def create_app(
                 status_code=404,
                 detail={"code": "link_code_invalid", "message": "Link code is invalid or expired."},
             )
-        now = datetime.now(UTC)
-        account = RiotAccount(
-            user_id=user_id,
-            puuid=riot_payload.puuid,
-            game_name=riot_payload.game_name,
-            tag_line=riot_payload.tag_line,
-            region=riot_payload.region.lower(),
-            shard=riot_payload.shard.lower(),
-            client_version=riot_payload.client_version,
-            linked_at=now,
+        account = await persist_riot_link(user_id, riot_payload, svc)
+        return LinkCompleteResponse(linked=True, riot_account=account)
+
+    @app.post("/riot/mobile-login/complete", response_model=LinkCompleteResponse)
+    async def riot_mobile_login_complete(
+        payload: RiotMobileLoginCompleteRequest,
+        user: Annotated[AuthUser, Depends(current_user)],
+        svc: Annotated[AppServices, Depends(get_services)],
+    ) -> LinkCompleteResponse:
+        await ensure_profile(user, svc.repo)
+        riot_payload = await svc.riot_auth.payload_from_web_login(
+            access_token=payload.access_token,
+            id_token=payload.id_token,
+            ssid=payload.ssid,
+            cookies=payload.cookies,
+            client_version=payload.client_version,
         )
-        await svc.repo.upsert_riot_account(account)
-        await svc.repo.upsert_riot_credentials(
-            RiotCredentialRecord(
-                user_id=user_id,
-                encrypted_payload=svc.crypto.encrypt_json(riot_payload.model_dump()),
-                last_refresh_at=now if riot_payload.access_token else None,
-                expires_hint=None,
-                updated_at=now,
-            )
-        )
+        riot_payload = await normalize_link_payload(riot_payload, svc)
+        account = await persist_riot_link(user.id, riot_payload, svc)
         return LinkCompleteResponse(linked=True, riot_account=account)
 
     @app.get("/me")
@@ -972,6 +971,33 @@ async def normalize_link_payload(
             "A sessão Riot renovada ainda veio expirada. Abra o VALORANT e detecte novamente."
         )
     return payload
+
+
+async def persist_riot_link(
+    user_id: str, riot_payload: RiotCredentialPayload, svc: AppServices
+) -> RiotAccount:
+    now = datetime.now(UTC)
+    account = RiotAccount(
+        user_id=user_id,
+        puuid=riot_payload.puuid,
+        game_name=riot_payload.game_name,
+        tag_line=riot_payload.tag_line,
+        region=riot_payload.region.lower(),
+        shard=riot_payload.shard.lower(),
+        client_version=riot_payload.client_version,
+        linked_at=now,
+    )
+    await svc.repo.upsert_riot_account(account)
+    await svc.repo.upsert_riot_credentials(
+        RiotCredentialRecord(
+            user_id=user_id,
+            encrypted_payload=svc.crypto.encrypt_json(riot_payload.model_dump()),
+            last_refresh_at=now if riot_payload.access_token else None,
+            expires_hint=None,
+            updated_at=now,
+        )
+    )
+    return account
 
 
 def route_info(endpoint: dict[str, Any]) -> RouteInfo:

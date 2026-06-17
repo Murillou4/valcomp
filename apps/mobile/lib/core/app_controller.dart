@@ -7,6 +7,7 @@ import 'api_client.dart';
 import 'diagnostic_log.dart';
 import 'models.dart';
 import 'push_service.dart';
+import 'update_service.dart';
 
 class AppController extends ChangeNotifier {
   AppController({ApiClient? api, required PushService pushService})
@@ -31,6 +32,7 @@ class AppController extends ChangeNotifier {
   String watchErrorDetails = '';
   String errorDetails = '';
   int navIndex = 1;
+  UpdateInfo? updateInfo;
   MeData? me;
   DailyStore? store;
   NightMarket? nightMarket;
@@ -52,6 +54,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> bootstrap() async {
     await api.restoreSession();
+    unawaited(checkForUpdate());
     if (api.hasSession) {
       try {
         await api.post('/auth/session/verify');
@@ -94,7 +97,9 @@ class AppController extends ChangeNotifier {
       }
       authenticated = true;
       await refreshAll(silent: true);
-      unawaited(_pushService.register(api));
+      unawaited(
+        _pushService.register(api, onOpenStore: openStoreFromNotification),
+      );
       return null;
     } on ApiException catch (exception) {
       error = exception.userMessage;
@@ -169,7 +174,9 @@ class AppController extends ChangeNotifier {
         store = null;
         player = null;
       }
-      unawaited(_pushService.register(api));
+      unawaited(
+        _pushService.register(api, onOpenStore: openStoreFromNotification),
+      );
     } on ApiException catch (exception) {
       if (exception.relinkRequired) {
         relinkRequired = true;
@@ -273,7 +280,8 @@ class AppController extends ChangeNotifier {
             await DiagnosticLog.instance.record(
               level: 'warning',
               category: 'link',
-              message: 'Vínculo Riot confirmou, mas a sessão remota ainda pediu revínculo.',
+              message:
+                  'Vínculo Riot confirmou, mas a sessão remota ainda pediu revínculo.',
               context: {'linked': true},
               stackTrace: exception.fullDetails,
             );
@@ -381,7 +389,7 @@ class AppController extends ChangeNotifier {
     errorDetails = '';
     notifyListeners();
     try {
-      await _pushService.register(api);
+      await _pushService.register(api, onOpenStore: openStoreFromNotification);
       final response = await api.post('/notifications/test');
       final sentCount = (response['sent_count'] as num?)?.toInt() ?? 0;
       final deviceCount = (response['device_count'] as num?)?.toInt() ?? 0;
@@ -459,6 +467,73 @@ class AppController extends ChangeNotifier {
         'Não foi possível consultar o backend.',
         exception.fullDetails,
       ].join('\n');
+    }
+  }
+
+  Future<void> checkForUpdate() async {
+    try {
+      updateInfo = await UpdateService().checkMobileUpdate();
+      notifyListeners();
+    } on Object catch (error) {
+      await DiagnosticLog.instance.record(
+        level: 'debug',
+        category: 'update_check',
+        message: 'Falha ao consultar versão publicada.',
+        context: {'error': error.toString()},
+      );
+    }
+  }
+
+  Future<String> completeMobileRiotLogin({
+    required String accessToken,
+    required String idToken,
+    required String ssid,
+    required Map<String, String> cookies,
+  }) async {
+    if (!api.hasSession) {
+      throw const ApiException(
+        'Sua sessão do Valcomp não está ativa. Entre novamente no app antes de vincular a conta Riot.',
+        code: 'valcomp_session_missing',
+      );
+    }
+    loading = true;
+    error = '';
+    errorDetails = '';
+    notifyListeners();
+    try {
+      final response = await api.post(
+        '/riot/mobile-login/complete',
+        body: {
+          'access_token': accessToken,
+          'id_token': idToken,
+          'ssid': ssid,
+          'cookies': cookies,
+        },
+      );
+      final account = _map(response['riot_account']);
+      relinkRequired = false;
+      linkCode = '';
+      linkStartedAt = null;
+      linkExpiresAt = null;
+      await refreshAll(silent: true);
+      final name = account['game_name']?.toString() ?? 'Conta Riot';
+      final tag = account['tag_line']?.toString() ?? '';
+      return tag.isEmpty ? name : '$name#$tag';
+    } on ApiException catch (exception) {
+      error = exception.userMessage;
+      errorDetails = exception.fullDetails;
+      rethrow;
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  void openStoreFromNotification() {
+    navIndex = 0;
+    notifyListeners();
+    if (authenticated && linked) {
+      unawaited(loadStore());
     }
   }
 }

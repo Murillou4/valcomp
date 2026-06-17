@@ -107,6 +107,14 @@ class LinkCompleteRequest(BaseModel):
     riot: RiotCredentialPayload
 
 
+class RiotMobileLoginCompleteRequest(BaseModel):
+    access_token: str = Field(min_length=20, max_length=8192)
+    id_token: str = Field(default="", max_length=8192)
+    ssid: str = Field(default="", max_length=4096)
+    cookies: dict[str, str] = Field(default_factory=dict)
+    client_version: str = Field(default="", max_length=120)
+
+
 class LinkCompleteResponse(BaseModel):
     linked: bool
     riot_account: RiotAccount

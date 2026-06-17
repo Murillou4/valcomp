@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import '../widgets/update_banner.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -66,6 +67,10 @@ class _AuthScreenState extends State<AuthScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (state.updateInfo != null) ...[
+                            UpdateBanner(info: state.updateInfo!),
+                            SizedBox(height: compact ? 18 : 24),
+                          ],
                           Center(
                             child: Image.asset(
                               'assets/images/logo.png',

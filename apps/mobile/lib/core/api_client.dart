@@ -61,31 +61,44 @@ class ApiClient {
 
   String _accessToken = '';
   String _refreshToken = '';
+  int? _expiresAt;
 
   bool get hasSession => _accessToken.isNotEmpty;
 
   Future<void> restoreSession() async {
     _accessToken = await _storage.read(key: 'access_token') ?? '';
     _refreshToken = await _storage.read(key: 'refresh_token') ?? '';
+    _expiresAt = int.tryParse(await _storage.read(key: 'expires_at') ?? '');
+    if (_sessionNearExpiry()) {
+      await refreshSession();
+    }
   }
 
   Future<void> saveSession(Map<String, dynamic> response) async {
     final session = _asMap(response['session']);
     _accessToken = session['access_token']?.toString() ?? '';
     _refreshToken = session['refresh_token']?.toString() ?? _refreshToken;
+    _expiresAt = int.tryParse(session['expires_at']?.toString() ?? '');
     if (_accessToken.isNotEmpty) {
       await _storage.write(key: 'access_token', value: _accessToken);
     }
     if (_refreshToken.isNotEmpty) {
       await _storage.write(key: 'refresh_token', value: _refreshToken);
     }
+    if (_expiresAt != null) {
+      await _storage.write(key: 'expires_at', value: _expiresAt.toString());
+    } else {
+      await _storage.delete(key: 'expires_at');
+    }
   }
 
   Future<void> clearSession() async {
     _accessToken = '';
     _refreshToken = '';
+    _expiresAt = null;
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
+    await _storage.delete(key: 'expires_at');
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -152,6 +165,9 @@ class ApiClient {
     bool retry = true,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
+    if (authenticated && retry && _sessionNearExpiry()) {
+      await refreshSession();
+    }
     final requestId = DiagnosticLog.instance.newEventId();
     final stopwatch = Stopwatch()..start();
     final headers = <String, String>{
@@ -302,6 +318,15 @@ class ApiClient {
         requestId: exception.requestId,
       );
     }
+  }
+
+  bool _sessionNearExpiry() {
+    final expiresAt = _expiresAt;
+    if (expiresAt == null || expiresAt <= 0 || _refreshToken.isEmpty) {
+      return false;
+    }
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+    return expiresAt <= now + 3600;
   }
 }
 

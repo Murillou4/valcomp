@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import '../widgets/update_banner.dart';
 import 'account_screen.dart';
 import 'link_screen.dart';
 import 'notifications_screen.dart';
@@ -28,6 +29,10 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (state.updateInfo != null) ...[
+                UpdateBanner(info: state.updateInfo!),
+                const SizedBox(height: 16),
+              ],
               Row(
                 children: [
                   Expanded(
@@ -132,7 +137,10 @@ class _MetricCard extends StatelessWidget {
         side: const BorderSide(color: ValcompColors.border),
       ),
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          Feedback.forTap(context);
+          onTap();
+        },
         borderRadius: BorderRadius.circular(24),
         child: SizedBox(
           height: 132,
@@ -234,7 +242,10 @@ class _StoreBanner extends StatelessWidget {
         side: const BorderSide(color: ValcompColors.border),
       ),
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          Feedback.forTap(context);
+          onTap();
+        },
         borderRadius: BorderRadius.circular(24),
         child: Ink(
           height: 154,
@@ -242,7 +253,7 @@ class _StoreBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: ValcompColors.border),
             image: const DecorationImage(
-              image: AssetImage('assets/images/store-gun-v2.png'),
+              image: AssetImage('assets/images/store-armory-v3.png'),
               fit: BoxFit.cover,
             ),
           ),
@@ -315,8 +326,14 @@ class _StatusFeature extends StatelessWidget {
       ),
       child: InkWell(
         onTap: !linked
-            ? () => Navigator.push(context, valcompRoute(const LinkScreen()))
-            : () => state.selectTab(2),
+            ? () {
+                Feedback.forTap(context);
+                Navigator.push(context, valcompRoute(const LinkScreen()));
+              }
+            : () {
+                Feedback.forTap(context);
+                state.selectTab(2);
+              },
         borderRadius: BorderRadius.circular(24),
         child: Ink(
           height: 292,
@@ -324,7 +341,7 @@ class _StatusFeature extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: ValcompColors.border),
             image: const DecorationImage(
-              image: AssetImage('assets/images/hero-agent-v2.png'),
+              image: AssetImage('assets/images/link-terminal-bg.png'),
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
             ),

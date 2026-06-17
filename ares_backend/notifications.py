@@ -61,6 +61,8 @@ class FirebasePushClient:
                     priority="high",
                     notification=messaging.AndroidNotification(
                         channel_id="skin_alerts",
+                        click_action="FLUTTER_NOTIFICATION_CLICK",
+                        icon="ic_notification",
                         sound="default",
                     ),
                 ),
@@ -307,6 +309,7 @@ class StoreAlertService:
                 "image": item.display_icon or None,
                 "data": {
                     "type": "skin_store_match",
+                    "route": "store",
                     "userId": user_id,
                     "itemId": watch.item_id,
                     "source": source,

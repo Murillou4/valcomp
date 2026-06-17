@@ -61,6 +61,14 @@
           </div>
         </div>
 
+        <div class="update-banner" id="update-banner" hidden>
+          <div>
+            <strong>Atualização disponível</strong>
+            <p id="update-message">Baixe a versão mais recente do Companion.</p>
+          </div>
+          <button id="download-update" type="button">Baixar</button>
+        </div>
+
         <div class="form-grid">
           <div class="code-area">
             <label for="link-code">Código mostrado no app</label>
@@ -88,7 +96,12 @@
           </div>
         </div>
 
-        <button class="advanced-toggle" id="advanced-toggle" type="button">
+        <button
+          class="advanced-toggle"
+          id="advanced-toggle"
+          type="button"
+          aria-expanded="false"
+        >
           Opções avançadas
           <span>⌄</span>
         </button>

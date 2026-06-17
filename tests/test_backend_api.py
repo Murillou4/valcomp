@@ -42,6 +42,29 @@ class FakeRiotAuth:
             }
         )
 
+    async def payload_from_web_login(
+        self,
+        *,
+        access_token: str,
+        id_token: str = "",
+        ssid: str = "",
+        cookies: dict[str, str] | None = None,
+        client_version: str = "",
+    ) -> RiotCredentialPayload:
+        return RiotCredentialPayload(
+            ssid=ssid,
+            cookies=cookies or {},
+            access_token=access_token,
+            id_token=id_token,
+            entitlement_token="web-entitlement",
+            puuid="puuid-web",
+            region="br",
+            shard="na",
+            client_version=client_version or "release-test",
+            game_name="Mobile",
+            tag_line="BR2",
+        )
+
 
 class FakeRiotClient:
     async def storefront(self, session: RiotSession) -> dict[str, Any]:
@@ -366,6 +389,18 @@ def test_password_auth_signup_login_and_session_verify() -> None:
     assert signup.json()["email_confirmation_required"] is False
     token = signup.json()["session"]["access_token"]
     refresh_token = signup.json()["session"]["refresh_token"]
+    assert signup.json()["session"]["expires_in"] is None
+    assert signup.json()["session"]["expires_at"] is None
+    token_claims = jwt.decode(
+        token,
+        options={"verify_signature": False, "verify_exp": False, "verify_aud": False},
+    )
+    refresh_claims = jwt.decode(
+        refresh_token,
+        options={"verify_signature": False, "verify_exp": False, "verify_aud": False},
+    )
+    assert "exp" not in token_claims
+    assert "exp" not in refresh_claims
 
     verify = client.post("/auth/session/verify", headers={"Authorization": f"Bearer {token}"})
     assert verify.status_code == 200
@@ -381,6 +416,54 @@ def test_password_auth_signup_login_and_session_verify() -> None:
     refresh = client.post("/auth/refresh", json={"refresh_token": refresh_token})
     assert refresh.status_code == 200
     assert refresh.json()["session"]["access_token"]
+
+
+def test_legacy_backend_tokens_with_exp_are_accepted_when_ttl_is_disabled() -> None:
+    client, repo, settings, _ = make_client()
+    signup = client.post(
+        "/auth/signup",
+        json={"email": "legacy@example.com", "password": "secret123"},
+    )
+    assert signup.status_code == 200
+    user_id = signup.json()["user"]["id"]
+    expired_access = jwt.encode(
+        {
+            "iss": "valcomp-api",
+            "aud": "authenticated",
+            "typ": "access",
+            "sub": user_id,
+            "email": "legacy@example.com",
+            "iat": int((datetime.now(UTC) - timedelta(days=10)).timestamp()),
+            "exp": int((datetime.now(UTC) - timedelta(days=1)).timestamp()),
+            "jti": "legacy-access",
+        },
+        settings.app_secret_key,
+        algorithm="HS256",
+    )
+    expired_refresh = jwt.encode(
+        {
+            "iss": "valcomp-api",
+            "aud": "authenticated",
+            "typ": "refresh",
+            "sub": user_id,
+            "email": "legacy@example.com",
+            "iat": int((datetime.now(UTC) - timedelta(days=10)).timestamp()),
+            "exp": int((datetime.now(UTC) - timedelta(days=1)).timestamp()),
+            "jti": "legacy-refresh",
+        },
+        settings.app_secret_key,
+        algorithm="HS256",
+    )
+
+    verify = client.post(
+        "/auth/session/verify",
+        headers={"Authorization": f"Bearer {expired_access}"},
+    )
+    refresh = client.post("/auth/refresh", json={"refresh_token": expired_refresh})
+
+    assert verify.status_code == 200
+    assert refresh.status_code == 200
+    assert refresh.json()["session"]["expires_at"] is None
 
 
 def test_link_start_complete_and_me_flow() -> None:
@@ -411,6 +494,31 @@ def test_link_start_complete_and_me_flow() -> None:
     assert complete.json()["riot_account"]["puuid"] == "puuid-123"
     me = client.get("/me", headers=auth_headers())
     assert me.json()["riot_account"]["game_name"] == "Player"
+
+
+def test_mobile_riot_login_complete_links_current_user() -> None:
+    client, repo, settings, _ = make_client()
+
+    complete = client.post(
+        "/riot/mobile-login/complete",
+        headers=auth_headers(),
+        json={
+            "access_token": "web-access-token-value-123456",
+            "id_token": "web-id-token",
+            "ssid": "web-ssid",
+            "cookies": {"ssid": "web-ssid", "clid": "cookie-value"},
+        },
+    )
+
+    assert complete.status_code == 200
+    assert complete.json()["riot_account"]["game_name"] == "Mobile"
+    me = client.get("/me", headers=auth_headers())
+    assert me.json()["riot_account"]["puuid"] == "puuid-web"
+    record = asyncio.run(repo.get_riot_credentials("mobile-user"))
+    assert record is not None
+    stored = CryptoService(settings.app_secret_key).decrypt_json(record.encrypted_payload)
+    assert stored["ssid"] == "web-ssid"
+    assert stored["cookies"]["ssid"] == "web-ssid"
 
 
 def test_link_complete_rejects_expired_riot_access_token() -> None:
@@ -614,6 +722,7 @@ def test_skin_watchlist_sends_daily_store_notification_once() -> None:
     assert first_daily["alerts"]["matched"][0]["item_id"] == "skin-daily"
     assert len(push.messages) == 1
     assert push.messages[0]["data"]["itemId"] == "skin-daily"
+    assert push.messages[0]["data"]["route"] == "store"
 
     second_daily = client.get("/valorant/store/daily", headers=auth_headers()).json()
     assert second_daily["alerts"]["sent_count"] == 0

@@ -223,6 +223,7 @@ class SupabaseAuth:
             return None
         if not self._looks_like_backend_token(token):
             return None
+        verify_exp = self._should_verify_backend_expiration(token_type)
         try:
             claims = jwt.decode(
                 token,
@@ -230,7 +231,10 @@ class SupabaseAuth:
                 algorithms=["HS256"],
                 audience="authenticated",
                 issuer=self.backend_issuer,
-                options={"require": ["sub", "exp", "iat", "iss", "aud", "typ"]},
+                options={
+                    "require": ["sub", "iat", "iss", "aud", "typ"],
+                    "verify_exp": verify_exp,
+                },
             )
         except jwt.PyJWTError as exc:
             raise UnauthorizedError("Sessao expirada. Entre novamente.") from exc
@@ -261,35 +265,47 @@ class SupabaseAuth:
 
     def _issue_backend_session(self, user: AuthUser) -> AuthSession:
         now = datetime.now(UTC)
-        access_expires = now + timedelta(seconds=self.settings.access_token_ttl_seconds)
-        refresh_expires = now + timedelta(seconds=self.settings.refresh_token_ttl_seconds)
+        access_expires = self._token_expiry(now, self.settings.access_token_ttl_seconds)
+        refresh_expires = self._token_expiry(now, self.settings.refresh_token_ttl_seconds)
         access_token = self._encode_backend_token(user, "access", now, access_expires)
         refresh_token = self._encode_backend_token(user, "refresh", now, refresh_expires)
         return AuthSession(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
-            expires_in=self.settings.access_token_ttl_seconds,
-            expires_at=int(access_expires.timestamp()),
+            expires_in=(
+                self.settings.access_token_ttl_seconds
+                if self.settings.access_token_ttl_seconds > 0
+                else None
+            ),
+            expires_at=int(access_expires.timestamp()) if access_expires else None,
         )
 
     def _encode_backend_token(
-        self, user: AuthUser, token_type: str, issued_at: datetime, expires_at: datetime
+        self, user: AuthUser, token_type: str, issued_at: datetime, expires_at: datetime | None
     ) -> str:
+        claims: dict[str, Any] = {
+            "iss": self.backend_issuer,
+            "aud": "authenticated",
+            "typ": token_type,
+            "sub": user.id,
+            "email": user.email,
+            "iat": int(issued_at.timestamp()),
+            "jti": secrets.token_urlsafe(16),
+        }
+        if expires_at is not None:
+            claims["exp"] = int(expires_at.timestamp())
         return jwt.encode(
-            {
-                "iss": self.backend_issuer,
-                "aud": "authenticated",
-                "typ": token_type,
-                "sub": user.id,
-                "email": user.email,
-                "iat": int(issued_at.timestamp()),
-                "exp": int(expires_at.timestamp()),
-                "jti": secrets.token_urlsafe(16),
-            },
+            claims,
             self.settings.app_secret_key,
             algorithm="HS256",
         )
+
+    @staticmethod
+    def _token_expiry(issued_at: datetime, ttl_seconds: int) -> datetime | None:
+        if ttl_seconds <= 0:
+            return None
+        return issued_at + timedelta(seconds=ttl_seconds)
 
     def _looks_like_backend_token(self, token: str) -> bool:
         try:
@@ -310,6 +326,13 @@ class SupabaseAuth:
             and hasattr(repo, "get_app_user_by_email")
             and hasattr(repo, "get_app_user_by_id")
         )
+
+    def _should_verify_backend_expiration(self, token_type: str) -> bool:
+        if token_type == "access":
+            return self.settings.access_token_ttl_seconds > 0
+        if token_type == "refresh":
+            return self.settings.refresh_token_ttl_seconds > 0
+        return True
 
     @classmethod
     def _hash_password(cls, password: str) -> str:

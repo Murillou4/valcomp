@@ -12,6 +12,7 @@
   --red: #ff4655;
   --green: #65d6a3;
   --amber: #f5c45b;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
@@ -113,15 +114,48 @@ button {
 }
 
 .content {
+  position: relative;
   display: flex;
   flex-direction: column;
+  isolation: isolate;
+  overflow: hidden;
   padding: 30px 42px 24px;
   min-height: 0;
+}
+
+.content::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: -1;
+  width: min(53%, 470px);
+  height: 226px;
+  border-bottom-left-radius: 34px;
+  content: "";
+  background:
+    linear-gradient(90deg, var(--background) 0%, rgba(8, 13, 19, 0.52) 36%, rgba(8, 13, 19, 0.08) 100%),
+    linear-gradient(180deg, rgba(8, 13, 19, 0) 0%, var(--background) 100%),
+    url("../../assets/companion-workstation.png") center / cover;
+  opacity: 0.52;
+  transform: translate3d(10px, -10px, 0);
+  animation: art-drift 8200ms var(--ease) infinite alternate;
+}
+
+.content::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background:
+    radial-gradient(circle at 76% 16%, rgba(255, 70, 85, 0.11), transparent 28%),
+    linear-gradient(180deg, transparent 0%, rgba(8, 13, 19, 0.82) 41%);
 }
 
 .intro,
 .steps,
 .status,
+.update-banner,
 .form-grid,
 .advanced-toggle,
 .advanced,
@@ -135,6 +169,10 @@ footer {
 
 .status {
   animation-delay: 130ms;
+}
+
+.update-banner {
+  animation-delay: 160ms;
 }
 
 .form-grid {
@@ -187,6 +225,10 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(7, 11, 16, 0.78);
+  transition:
+    transform 220ms var(--ease),
+    border-color 220ms var(--ease),
+    background 220ms var(--ease);
 }
 
 .step > span {
@@ -220,6 +262,7 @@ h1 {
 .step.active {
   border-color: rgba(255, 70, 85, 0.42);
   background: rgba(255, 70, 85, 0.07);
+  transform: translateY(-1px);
 }
 
 .step.active > span,
@@ -247,6 +290,10 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
+  transition:
+    transform 220ms var(--ease),
+    background 220ms var(--ease),
+    border-color 220ms var(--ease);
 }
 
 .status-icon {
@@ -257,6 +304,14 @@ h1 {
   height: 38px;
   border-radius: 12px;
   background: var(--raised);
+  transition:
+    transform 220ms var(--ease),
+    background 220ms var(--ease),
+    color 220ms var(--ease);
+}
+
+.status[aria-busy="true"] .status-icon {
+  animation: status-pulse 1200ms ease-in-out infinite;
 }
 
 .status strong {
@@ -297,6 +352,57 @@ h1 {
 .status.error .status-icon {
   color: var(--red);
   background: rgba(255, 70, 85, 0.13);
+}
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 70, 85, 0.34);
+  border-radius: 16px;
+  background: rgba(255, 70, 85, 0.08);
+}
+
+.update-banner[hidden] {
+  display: none;
+}
+
+.update-banner strong {
+  font-size: 12px;
+}
+
+.update-banner p {
+  margin: 3px 0 0;
+  color: #c9d0d8;
+  font-size: 11px;
+}
+
+.update-banner button {
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  color: white;
+  background: var(--red);
+  font-size: 12px;
+  font-weight: 850;
+  transition:
+    transform 150ms ease,
+    background 150ms ease;
+}
+
+.update-banner button:hover {
+  transform: translateY(-1px);
+}
+
+.update-banner button:active {
+  transform: scale(0.98);
 }
 
 .spinner {
@@ -402,6 +508,8 @@ input:focus-visible {
 }
 
 .button {
+  position: relative;
+  overflow: hidden;
   min-height: 48px;
   border: 0;
   border-radius: 14px;
@@ -411,6 +519,20 @@ input:focus-visible {
     transform 150ms ease,
     opacity 150ms ease,
     background 150ms ease;
+}
+
+.button::after,
+.update-banner button::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.17) 45%,
+    transparent 78%
+  );
+  transform: translateX(-120%);
 }
 
 .button:hover:not(:disabled) {
@@ -437,6 +559,10 @@ input:focus-visible {
   background: #151c25;
 }
 
+.button.loading::after {
+  animation: sheen 1050ms var(--ease) infinite;
+}
+
 .advanced-toggle {
   display: flex;
   align-items: center;
@@ -449,6 +575,23 @@ input:focus-visible {
   background: transparent;
   font-size: 11px;
   font-weight: 750;
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.advanced-toggle:hover {
+  color: white;
+  transform: translateY(-1px);
+}
+
+.advanced-toggle span {
+  display: inline-block;
+  transition: transform 180ms var(--ease);
+}
+
+.advanced-toggle.open span {
+  transform: rotate(180deg);
 }
 
 .advanced {
@@ -457,6 +600,7 @@ input:focus-visible {
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(7, 11, 16, 0.7);
+  animation: unfold 240ms var(--ease) both;
 }
 
 .advanced input {
@@ -512,6 +656,45 @@ footer p {
   }
 }
 
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scaleY(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes sheen {
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes art-drift {
+  from {
+    transform: translate3d(10px, -10px, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(0, -4px, 0) scale(1.025);
+  }
+}
+
 @keyframes breathe {
   0%,
   100% {
@@ -522,6 +705,17 @@ footer p {
   50% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
   }
 }
 

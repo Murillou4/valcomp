@@ -14,8 +14,8 @@ class BackendSettings(BaseSettings):
     api_base_url: str = "http://127.0.0.1:8000"
     allow_dev_auth: bool = True
     backend_auth_enabled: bool = True
-    access_token_ttl_seconds: int = 60 * 60 * 24 * 7
-    refresh_token_ttl_seconds: int = 60 * 60 * 24 * 90
+    access_token_ttl_seconds: int = 0
+    refresh_token_ttl_seconds: int = 0
 
     app_secret_key: str = Field(
         default="dev-secret-change-me",

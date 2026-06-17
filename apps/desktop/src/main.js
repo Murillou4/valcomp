@@ -5,6 +5,9 @@ const path = require("path");
 const { randomUUID, createHash } = require("crypto");
 
 const DEFAULT_BACKEND_URL = "https://valcomp-api-cda2.fly.dev";
+const DOWNLOAD_MANIFEST_URL =
+  process.env.VALCOMP_DOWNLOAD_MANIFEST_URL ||
+  "https://murillou4.github.io/valcomp/downloads/manifest.json";
 const REGION_TO_SHARD = {
   na: "na",
   latam: "na",
@@ -18,6 +21,7 @@ const MAX_LOG_BYTES = 2 * 1024 * 1024;
 let mainWindow = null;
 let riotPayload = null;
 let logFile = null;
+let latestDesktopUpdate = null;
 
 function jwtTiming(token) {
   try {
@@ -272,6 +276,58 @@ async function publicClientVersion() {
   }
 }
 
+function compareVersions(latestVersion, currentVersion) {
+  const latest = String(latestVersion || "")
+    .split(/[.+-]/)
+    .map((part) => Number.parseInt(part, 10) || 0);
+  const current = String(currentVersion || "")
+    .split(/[.+-]/)
+    .map((part) => Number.parseInt(part, 10) || 0);
+  const length = Math.max(latest.length, current.length);
+  for (let index = 0; index < length; index += 1) {
+    const left = latest[index] || 0;
+    const right = current[index] || 0;
+    if (left !== right) return left > right;
+  }
+  return false;
+}
+
+function resolveDownloadUrl(file) {
+  if (/^https?:\/\//i.test(String(file || ""))) return String(file);
+  return new URL(String(file || ""), DOWNLOAD_MANIFEST_URL).toString();
+}
+
+async function checkDesktopUpdate() {
+  try {
+    const response = await fetch(DOWNLOAD_MANIFEST_URL, {
+      headers: { Accept: "application/json", "User-Agent": `Valcomp-Companion/${app.getVersion()}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return { available: false };
+    const manifest = await response.json();
+    const desktop = manifest?.desktop || {};
+    const latestVersion = String(desktop.version || "");
+    const currentVersion = app.getVersion();
+    if (!compareVersions(latestVersion, currentVersion)) {
+      return { available: false, currentVersion, latestVersion };
+    }
+    latestDesktopUpdate = {
+      available: true,
+      currentVersion,
+      latestVersion,
+      downloadUrl: resolveDownloadUrl(desktop.file || "valcomp-companion-windows.exe"),
+    };
+    logEvent("info", "update_available", {
+      current_version: currentVersion,
+      latest_version: latestVersion,
+    });
+    return latestDesktopUpdate;
+  } catch (error) {
+    logEvent("warning", "update_check_failed", { error: String(error) });
+    return { available: false };
+  }
+}
+
 async function detectRiotSession() {
   logEvent("info", "riot_detection_started");
   const lockfile = readLockfile();
@@ -463,6 +519,13 @@ function registerIpc() {
   });
   ipcMain.handle("diagnostics:open-folder", async () => {
     await shell.openPath(path.dirname(logFile));
+    return { ok: true };
+  });
+  ipcMain.handle("updates:check", () => checkDesktopUpdate());
+  ipcMain.handle("updates:download", async () => {
+    const update = latestDesktopUpdate || (await checkDesktopUpdate());
+    if (!update?.available || !update.downloadUrl) return { ok: false };
+    await shell.openExternal(update.downloadUrl);
     return { ok: true };
   });
   ipcMain.handle("clipboard:write", (_, text) => {

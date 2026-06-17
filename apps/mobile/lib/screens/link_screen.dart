@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import 'riot_mobile_login_screen.dart';
 
 class LinkScreen extends StatefulWidget {
   const LinkScreen({super.key});
@@ -51,7 +52,7 @@ class _LinkScreenState extends State<LinkScreen> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/images/hero-agent-v2.png',
+            'assets/images/link-terminal-bg.png',
             fit: BoxFit.cover,
             alignment: Alignment.topCenter,
           ),
@@ -105,7 +106,7 @@ class _LinkScreenState extends State<LinkScreen> {
                           ),
                         ),
                       ),
-                      const Spacer(),
+                      SizedBox(height: compact ? 28 : 74),
                       Text(
                         state.relinkRequired
                             ? 'Reconecte sua sessão Riot.'
@@ -145,32 +146,59 @@ class _LinkScreenState extends State<LinkScreen> {
                               const SizedBox(height: 16),
                             ],
                             if (state.linkCode.isEmpty)
-                              const Text(
-                                'Seu código aparecerá aqui',
-                                style: TextStyle(
-                                  color: ValcompColors.muted,
-                                  fontWeight: FontWeight.w700,
+                              const AnimatedSwitcher(
+                                duration: Duration(milliseconds: 220),
+                                child: Text(
+                                  'Seu código aparecerá aqui',
+                                  key: ValueKey('empty-code'),
+                                  style: TextStyle(
+                                    color: ValcompColors.muted,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               )
                             else
-                              InkWell(
-                                onTap: () async {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: state.linkCode),
-                                  );
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Código copiado.'),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                transitionBuilder: (child, animation) =>
+                                    ScaleTransition(
+                                      scale: Tween<double>(
+                                        begin: 0.96,
+                                        end: 1,
+                                      ).animate(animation),
+                                      child: FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      ),
                                     ),
-                                  );
-                                },
-                                child: Text(
-                                  _spacedCode(state.linkCode),
-                                  style: TextStyle(
-                                    fontSize: compact ? 32 : 39,
-                                    letterSpacing: 4,
-                                    fontWeight: FontWeight.w800,
+                                child: InkWell(
+                                  key: ValueKey(state.linkCode),
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: () async {
+                                    await Clipboard.setData(
+                                      ClipboardData(text: state.linkCode),
+                                    );
+                                    await HapticFeedback.selectionClick();
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Código copiado.'),
+                                      ),
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    child: Text(
+                                      _spacedCode(state.linkCode),
+                                      style: TextStyle(
+                                        fontSize: compact ? 32 : 39,
+                                        letterSpacing: 4,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -189,6 +217,7 @@ class _LinkScreenState extends State<LinkScreen> {
                               onPressed: busy
                                   ? null
                                   : () async {
+                                      await HapticFeedback.lightImpact();
                                       await state.generateLinkCode();
                                       if (!context.mounted) return;
                                       if (state.linkCode.isNotEmpty) {
@@ -198,10 +227,49 @@ class _LinkScreenState extends State<LinkScreen> {
                                       }
                                       setState(() {});
                                     },
-                              child: Text(
-                                state.linkCode.isEmpty
-                                    ? 'Gerar código de vínculo'
-                                    : 'Gerar novo código',
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                child: state.loading
+                                    ? const SizedBox(
+                                        key: ValueKey('code-loading'),
+                                        width: 21,
+                                        height: 21,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        state.linkCode.isEmpty
+                                            ? 'Gerar código de vínculo'
+                                            : 'Gerar novo código',
+                                        key: ValueKey(
+                                          state.linkCode.isEmpty
+                                              ? 'generate-code'
+                                              : 'refresh-code',
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: busy
+                                  ? null
+                                  : () {
+                                      HapticFeedback.selectionClick();
+                                      Navigator.push(
+                                        context,
+                                        valcompRoute(
+                                          const RiotMobileLoginScreen(),
+                                        ),
+                                      );
+                                    },
+                              icon: const Icon(
+                                Icons.phone_android_rounded,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Entrar pela Riot neste celular',
                               ),
                             ),
                           ],
@@ -248,12 +316,17 @@ class _LinkScreenState extends State<LinkScreen> {
                             color: ValcompColors.surface,
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: SelectableText(
-                            state.api.baseUrl,
-                            style: const TextStyle(
-                              color: ValcompColors.muted,
-                              fontSize: 12,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SelectableText(
+                                state.api.baseUrl,
+                                style: const TextStyle(
+                                  color: ValcompColors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       const SizedBox(height: 4),
@@ -285,17 +358,17 @@ class _LinkScreenState extends State<LinkScreen> {
                 return Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 480),
-                    child: compact
-                        ? SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: constraints.maxHeight,
-                              ),
-                              child: content,
-                            ),
-                          )
-                        : content,
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: content,
+                      ),
+                    ),
                   ),
                 );
               },

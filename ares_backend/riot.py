@@ -27,6 +27,14 @@ REGION_TO_SHARD = {
     "kr": "kr",
 }
 
+RIOT_CLIENT_AUTH_PARAMS = {
+    "redirect_uri": "http://localhost/redirect",
+    "client_id": "riot-client",
+    "response_type": "token id_token",
+    "nonce": "1",
+    "scope": "openid link ban lol_region account",
+}
+
 
 @dataclass(slots=True)
 class RiotSession:
@@ -116,6 +124,53 @@ class RiotAuthService:
             }
         )
 
+    async def payload_from_web_login(
+        self,
+        *,
+        access_token: str,
+        id_token: str = "",
+        ssid: str = "",
+        cookies: dict[str, str] | None = None,
+        client_version: str = "",
+    ) -> RiotCredentialPayload:
+        cookie_map = {
+            str(key): str(value)
+            for key, value in (cookies or {}).items()
+            if str(key) and str(value)
+        }
+        clean_ssid = ssid or cookie_map.get("ssid", "")
+        if clean_ssid:
+            try:
+                auth_data = await self._reauth_with_ssid(clean_ssid)
+            except RelinkRequiredError:
+                if access_token_needs_refresh(access_token, leeway_seconds=300):
+                    raise
+            else:
+                access_token = auth_data.get("access_token", access_token)
+                id_token = auth_data.get("id_token", id_token)
+        if access_token_needs_refresh(access_token, leeway_seconds=300):
+            raise RelinkRequiredError("A sessão Riot retornada pelo login já veio expirada.")
+
+        entitlement = await self._fetch_entitlement(access_token)
+        userinfo = await self._fetch_userinfo(access_token)
+        region, shard = await self._fetch_region(access_token, id_token)
+        account = userinfo.get("acct", {}) if isinstance(userinfo, dict) else {}
+        if clean_ssid:
+            cookie_map["ssid"] = clean_ssid
+        return RiotCredentialPayload(
+            ssid=clean_ssid,
+            cookies=cookie_map,
+            access_token=access_token,
+            id_token=id_token,
+            entitlement_token=entitlement,
+            puuid=str(userinfo.get("sub") or ""),
+            region=region,
+            shard=shard,
+            client_version=client_version or self.settings.default_client_version,
+            game_name=str(account.get("game_name") or ""),
+            tag_line=str(account.get("tag_line") or ""),
+        )
+
     def _session_from_payload(self, payload: RiotCredentialPayload) -> RiotSession:
         region = payload.region.lower()
         shard = (payload.shard or REGION_TO_SHARD.get(region, "")).lower()
@@ -152,13 +207,7 @@ class RiotAuthService:
     async def _reauth_with_ssid(self, ssid: str) -> dict[str, str]:
         response = await self.client.get(
             "https://auth.riotgames.com/authorize",
-            params={
-                "redirect_uri": "https://playvalorant.com/opt_in",
-                "client_id": "play-valorant-web-prod",
-                "response_type": "token id_token",
-                "nonce": "1",
-                "scope": "account openid",
-            },
+            params=RIOT_CLIENT_AUTH_PARAMS,
             headers={"Cookie": f"ssid={ssid}", "User-Agent": ""},
         )
         location = response.headers.get("location", "")
@@ -166,7 +215,10 @@ class RiotAuthService:
             raise RelinkRequiredError("Riot reauth failed; no redirect location.")
         parsed = urlparse(location)
         fragment = parse_qs(parsed.fragment)
-        return {key: values[0] for key, values in fragment.items() if values}
+        data = {key: values[0] for key, values in fragment.items() if values}
+        if not data.get("access_token"):
+            raise RelinkRequiredError("Riot reauth did not return an access token.")
+        return data
 
     async def _fetch_entitlement(self, access_token: str) -> str:
         response = await self.client.post(
@@ -174,7 +226,7 @@ class RiotAuthService:
             headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
             json={},
         )
-        response.raise_for_status()
+        _raise_for_riot_auth(response, "buscar entitlement")
         return str(response.json().get("entitlements_token") or "")
 
     async def _fetch_userinfo(self, access_token: str) -> dict[str, Any]:
@@ -182,7 +234,7 @@ class RiotAuthService:
             "https://auth.riotgames.com/userinfo",
             headers={"Authorization": f"Bearer {access_token}", "User-Agent": ""},
         )
-        response.raise_for_status()
+        _raise_for_riot_auth(response, "buscar dados da conta")
         data = response.json()
         return data if isinstance(data, dict) else {}
 
@@ -194,7 +246,7 @@ class RiotAuthService:
             headers={"Authorization": f"Bearer {access_token}", "User-Agent": ""},
             json={"id_token": id_token},
         )
-        response.raise_for_status()
+        _raise_for_riot_auth(response, "buscar região da conta")
         region = str(response.json().get("affinities", {}).get("live") or "").lower()
         return region, REGION_TO_SHARD.get(region, "")
 
@@ -380,6 +432,20 @@ def access_token_needs_refresh(token: str, *, leeway_seconds: int = 60) -> bool:
     if not isinstance(expires_at, (int, float)):
         return False
     return float(expires_at) <= datetime.now(UTC).timestamp() + leeway_seconds
+
+
+def _raise_for_riot_auth(response: httpx.Response, action: str) -> None:
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        if response.status_code in {401, 403}:
+            raise RelinkRequiredError(
+                f"A Riot recusou a sessão ao {action}. Faça login Riot novamente pelo celular."
+            ) from exc
+        raise RiotRequestError(
+            f"Riot returned HTTP {response.status_code} ao {action}.",
+            riot_status=response.status_code,
+        ) from exc
 
 
 def riot_error_code(response: httpx.Response) -> str:

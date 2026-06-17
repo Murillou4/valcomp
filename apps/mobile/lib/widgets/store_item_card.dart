@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../core/models.dart';
 import '../core/theme.dart';
+import 'common.dart';
 
 const tierColors = <String, Color>{
   '12683d76-48d7-84a3-4e09-6985794f0445': Color(0xFF5A9FE2),
@@ -38,7 +39,12 @@ class StoreItemCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                Feedback.forTap(context);
+                onTap!();
+              },
         borderRadius: BorderRadius.circular(24),
         child: Ink(
           height: 132,
@@ -89,7 +95,8 @@ class StoreItemCard extends StatelessWidget {
                     child: CachedNetworkImage(
                       imageUrl: item.image,
                       fit: BoxFit.contain,
-                      placeholder: (_, __) => const SizedBox.shrink(),
+                      placeholder: (_, __) =>
+                          const SkeletonBlock(height: 72, radius: 16),
                       errorWidget: (_, __, ___) => const SizedBox.shrink(),
                     ),
                   ),
