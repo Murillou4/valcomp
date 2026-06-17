@@ -9,6 +9,9 @@
       content="Teste o Valcomp: app companion para consultar sua loja diária do VALORANT, montar wishlist de skins e receber alertas no Android."
     />
     <meta name="theme-color" content="#090e15" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preload" href="./assets/fonts/Asgard-ExtraBold.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="stylesheet" href="./styles.css" />
     <script>
@@ -66,8 +69,18 @@
                   <div class="phone-topbar">
                     <span>Olá, Cda</span>
                     <div class="round-icons">
-                      <i></i>
-                      <i></i>
+                      <i>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M15 17H9m9-2v-4a6 6 0 0 0-12 0v4l-2 2h16l-2-2Z" />
+                          <path d="M10 20h4" />
+                        </svg>
+                      </i>
+                      <i>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+                          <path d="M4 21a8 8 0 0 1 16 0" />
+                        </svg>
+                      </i>
                     </div>
                   </div>
                   <div class="metric-grid">
@@ -83,7 +96,7 @@
                     </div>
                   </div>
                   <div class="store-preview">
-                    <img src="./assets/images/store-weapon-premium.webp" alt="" />
+                    <img src="./assets/images/stinger-prelude-real.jpg" alt="" />
                     <strong>Ver minha loja</strong>
                   </div>
                   <div class="wishlist-preview">
@@ -91,12 +104,34 @@
                       <span class="pill-dot"></span>
                       <small>Wishlist ativa</small>
                     </div>
-                    <strong>Kuronami, Prelude, Reaver</strong>
+                    <strong>Kuronami, Prelúdio, Reaver</strong>
+                    <div class="wishlist-skin-row" aria-hidden="true">
+                      <img src="./assets/images/kuronami-vandal-real.png" alt="" />
+                      <span>Kuronami Vandal</span>
+                    </div>
                   </div>
                   <div class="bottom-nav" aria-hidden="true">
-                    <span></span>
-                    <span class="active"></span>
-                    <span></span>
+                    <span class="nav-shop">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 7h14l-1.4 9.2a2 2 0 0 1-2 1.8H8.4a2 2 0 0 1-2-1.8L5 7Z" />
+                        <path d="M9 7a3 3 0 0 1 6 0" />
+                        <path d="M9 21h.01M15 21h.01" />
+                      </svg>
+                    </span>
+                    <span class="nav-home active">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m4 11 8-7 8 7" />
+                        <path d="M6 10v10h12V10" />
+                        <path d="M10 20v-5h4v5" />
+                      </svg>
+                    </span>
+                    <span class="nav-stats">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 20V9" />
+                        <path d="M12 20V4" />
+                        <path d="M19 20v-7" />
+                      </svg>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -116,15 +151,21 @@
           </div>
 
           <div class="hero-marquee" aria-hidden="true">
-            <div>
-              <span>Loja diária</span>
-              <span>Wishlist</span>
-              <span>Alertas</span>
-              <span>Companion Windows</span>
-              <span>Loja diária</span>
-              <span>Wishlist</span>
-              <span>Alertas</span>
-              <span>Companion Windows</span>
+            <div class="marquee-track">
+              <div class="marquee-group">
+                <span>Loja diária</span>
+                <span>Wishlist</span>
+                <span>Alertas</span>
+                <span>Companion Windows</span>
+                <span>Skin encontrada</span>
+              </div>
+              <div class="marquee-group">
+                <span>Loja diária</span>
+                <span>Wishlist</span>
+                <span>Alertas</span>
+                <span>Companion Windows</span>
+                <span>Skin encontrada</span>
+              </div>
             </div>
           </div>
         </section>
@@ -139,8 +180,8 @@
             </p>
           </div>
 
-          <div class="feature-layout">
-            <article class="feature-panel feature-panel-wide" data-reveal data-tilt>
+          <div class="bento-grid">
+            <article class="bento-card bento-store" data-reveal data-tilt>
               <div class="panel-copy">
                 <span class="feature-kicker">Loja</span>
                 <h3>Mercado diário no bolso.</h3>
@@ -148,39 +189,74 @@
                   Consulte os itens da sua conta pelo app e veja a rotação sem abrir o jogo só para conferir a loja.
                 </p>
               </div>
-              <div class="skin-stack" aria-hidden="true">
-                <div class="skin-card skin-card-one">
-                  <img src="./assets/images/store-weapon-premium.webp" alt="" />
-                  <strong>Stinger Prelúdio do Caos</strong>
-                </div>
-                <div class="skin-card skin-card-two">
-                  <img src="./assets/images/store-weapon-premium.webp" alt="" />
-                  <strong>Ares Floreteira</strong>
-                </div>
+              <div class="skin-showcase" aria-hidden="true">
+                <figure class="skin-strip skin-strip-primary">
+                  <img src="./assets/images/stinger-prelude-real.jpg" alt="" />
+                  <figcaption>Stinger Prelúdio do Caos</figcaption>
+                </figure>
+                <figure class="skin-strip skin-strip-secondary">
+                  <img src="./assets/images/ares-floreterea-real.webp" alt="" />
+                  <figcaption>Ares Floretérea</figcaption>
+                </figure>
               </div>
             </article>
 
-            <article class="feature-panel" data-reveal>
+            <article class="bento-card bento-search" data-reveal>
               <span class="feature-kicker">Wishlist</span>
               <h3>Salve o que você está caçando.</h3>
               <p>
                 Busque skins pelo nome, adicione à lista e acompanhe tudo em uma tela simples.
               </p>
-              <div class="mini-search" aria-hidden="true">
-                <span></span>
-                <strong>Buscar skin pelo nome</strong>
+              <div class="search-demo" aria-hidden="true">
+                <div class="mini-search">
+                  <span class="search-lens"></span>
+                  <strong>
+                    <span class="typing-text typing-one">Ares Floretérea</span>
+                    <span class="typing-text typing-two">Stinger Prelúdio do Caos</span>
+                  </strong>
+                </div>
+                <div class="search-result">
+                  <img src="./assets/images/ares-floreterea-real.webp" alt="" />
+                  <span>Skin adicionada à wishlist</span>
+                </div>
               </div>
             </article>
 
-            <article class="feature-panel" data-reveal>
+            <article class="bento-card bento-alert" data-reveal>
               <span class="feature-kicker">Alertas</span>
               <h3>Notificação quando interessa.</h3>
               <p>
                 O backend compara sua wishlist com sua loja e envia o alerta pelo Firebase Cloud Messaging.
               </p>
-              <div class="alert-chip" aria-hidden="true">
-                <span></span>
-                Skin encontrada
+              <div class="notification-demo" aria-hidden="true">
+                <div class="alert-chip">
+                  <span></span>
+                  Skin encontrada
+                </div>
+                <div class="notification-card">
+                  <img src="./assets/images/stinger-prelude-real.jpg" alt="" />
+                  <div>
+                    <strong>Stinger na loja</strong>
+                    <small>Abra o Valcomp e confira a rotação.</small>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="bento-card bento-sync" data-reveal>
+              <span class="feature-kicker">Companion</span>
+              <h3>Celular e PC no mesmo fluxo.</h3>
+              <p>
+                O código de vínculo conecta o app ao companion Windows e mantém a consulta organizada, sem tela solta nem configuração confusa.
+              </p>
+              <div class="sync-rail" aria-hidden="true">
+                <span>APK</span>
+                <i></i>
+                <span>6 dígitos</span>
+                <i></i>
+                <span>Windows</span>
+                <i></i>
+                <span>Alerta</span>
               </div>
             </article>
           </div>
