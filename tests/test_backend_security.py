@@ -108,6 +108,123 @@ def test_bad_claims_from_riot_becomes_relink_required() -> None:
     asyncio.run(run())
 
 
+def test_mobile_web_login_prefers_redirect_access_token_before_ssid_reauth() -> None:
+    seen: list[tuple[str, str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        authorization = request.headers.get("authorization", "")
+        seen.append((request.url.host or "", request.url.path, authorization))
+        if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":
+            return httpx.Response(
+                302,
+                headers={
+                    "location": (
+                        "http://localhost/redirect#access_token=ssid-access-token"
+                        "&id_token=ssid-id-token"
+                    )
+                },
+            )
+        if request.url.host == "entitlements.auth.riotgames.com":
+            if authorization == "Bearer direct-access-token":
+                return httpx.Response(200, json={"entitlements_token": "direct-entitlement"})
+            return httpx.Response(403, json={"error": "forbidden"})
+        if request.url.host == "auth.riotgames.com" and request.url.path == "/userinfo":
+            assert authorization == "Bearer direct-access-token"
+            return httpx.Response(
+                200,
+                json={
+                    "sub": "direct-puuid",
+                    "acct": {"game_name": "Direct", "tag_line": "BR1"},
+                },
+            )
+        if request.url.host == "riot-geo.pas.si.riotgames.com":
+            assert authorization == "Bearer direct-access-token"
+            return httpx.Response(200, json={"affinities": {"live": "br"}})
+        return httpx.Response(404)
+
+    async def run() -> None:
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        service = RiotAuthService(
+            BackendSettings(app_secret_key="unit-test-secret"),
+            CryptoService("unit-test-secret"),
+            client=http,
+        )
+
+        payload = await service.payload_from_web_login(
+            access_token="direct-access-token",
+            id_token="direct-id-token",
+            ssid="ssid-cookie",
+            cookies={"ssid": "ssid-cookie"},
+            client_version="release-test",
+        )
+
+        assert payload.access_token == "direct-access-token"
+        assert payload.entitlement_token == "direct-entitlement"
+        assert payload.puuid == "direct-puuid"
+        assert payload.region == "br"
+        assert payload.shard == "na"
+        assert not any(host == "auth.riotgames.com" and path == "/authorize" for host, path, _ in seen)
+        await http.aclose()
+
+    asyncio.run(run())
+
+
+def test_mobile_web_login_falls_back_to_ssid_when_redirect_token_is_rejected() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        authorization = request.headers.get("authorization", "")
+        if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":
+            return httpx.Response(
+                302,
+                headers={
+                    "location": (
+                        "http://localhost/redirect#access_token=ssid-access-token"
+                        "&id_token=ssid-id-token"
+                    )
+                },
+            )
+        if request.url.host == "entitlements.auth.riotgames.com":
+            if authorization == "Bearer direct-access-token":
+                return httpx.Response(403, json={"error": "forbidden"})
+            if authorization == "Bearer ssid-access-token":
+                return httpx.Response(200, json={"entitlements_token": "ssid-entitlement"})
+        if request.url.host == "auth.riotgames.com" and request.url.path == "/userinfo":
+            assert authorization == "Bearer ssid-access-token"
+            return httpx.Response(
+                200,
+                json={
+                    "sub": "ssid-puuid",
+                    "acct": {"game_name": "Fallback", "tag_line": "BR2"},
+                },
+            )
+        if request.url.host == "riot-geo.pas.si.riotgames.com":
+            assert authorization == "Bearer ssid-access-token"
+            return httpx.Response(200, json={"affinities": {"live": "br"}})
+        return httpx.Response(404)
+
+    async def run() -> None:
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        service = RiotAuthService(
+            BackendSettings(app_secret_key="unit-test-secret"),
+            CryptoService("unit-test-secret"),
+            client=http,
+        )
+
+        payload = await service.payload_from_web_login(
+            access_token="direct-access-token",
+            id_token="direct-id-token",
+            ssid="ssid-cookie",
+            cookies={"ssid": "ssid-cookie"},
+        )
+
+        assert payload.access_token == "ssid-access-token"
+        assert payload.entitlement_token == "ssid-entitlement"
+        assert payload.puuid == "ssid-puuid"
+        assert payload.game_name == "Fallback"
+        await http.aclose()
+
+    asyncio.run(run())
+
+
 def test_mobile_web_login_entitlement_403_becomes_relink_required() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":

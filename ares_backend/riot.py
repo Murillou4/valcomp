@@ -140,26 +140,58 @@ class RiotAuthService:
         }
         clean_ssid = ssid or cookie_map.get("ssid", "")
         if clean_ssid:
-            try:
-                auth_data = await self._reauth_with_ssid(clean_ssid)
-            except RelinkRequiredError:
-                if access_token_needs_refresh(access_token, leeway_seconds=300):
-                    raise
-            else:
-                access_token = auth_data.get("access_token", access_token)
-                id_token = auth_data.get("id_token", id_token)
+            cookie_map["ssid"] = clean_ssid
+
+        used_reauth_token = False
+        if access_token_needs_refresh(access_token, leeway_seconds=300):
+            if not clean_ssid:
+                raise RelinkRequiredError("A sessão Riot retornada pelo login já veio expirada.")
+            auth_data = await self._reauth_with_ssid(clean_ssid)
+            access_token = auth_data.get("access_token", "")
+            id_token = auth_data.get("id_token", id_token)
+            used_reauth_token = True
+
+        try:
+            return await self._payload_from_web_tokens(
+                access_token=access_token,
+                id_token=id_token,
+                ssid=clean_ssid,
+                cookies=cookie_map,
+                client_version=client_version,
+            )
+        except RelinkRequiredError:
+            if not clean_ssid or used_reauth_token:
+                raise
+            auth_data = await self._reauth_with_ssid(clean_ssid)
+            fallback_access_token = auth_data.get("access_token", "")
+            if not fallback_access_token or fallback_access_token == access_token:
+                raise
+            return await self._payload_from_web_tokens(
+                access_token=fallback_access_token,
+                id_token=auth_data.get("id_token", id_token),
+                ssid=clean_ssid,
+                cookies=cookie_map,
+                client_version=client_version,
+            )
+
+    async def _payload_from_web_tokens(
+        self,
+        *,
+        access_token: str,
+        id_token: str,
+        ssid: str,
+        cookies: dict[str, str],
+        client_version: str,
+    ) -> RiotCredentialPayload:
         if access_token_needs_refresh(access_token, leeway_seconds=300):
             raise RelinkRequiredError("A sessão Riot retornada pelo login já veio expirada.")
-
         entitlement = await self._fetch_entitlement(access_token)
         userinfo = await self._fetch_userinfo(access_token)
         region, shard = await self._fetch_region(access_token, id_token)
         account = userinfo.get("acct", {}) if isinstance(userinfo, dict) else {}
-        if clean_ssid:
-            cookie_map["ssid"] = clean_ssid
         return RiotCredentialPayload(
-            ssid=clean_ssid,
-            cookies=cookie_map,
+            ssid=ssid,
+            cookies=cookies,
             access_token=access_token,
             id_token=id_token,
             entitlement_token=entitlement,
