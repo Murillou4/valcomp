@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:valcomp/core/api_client.dart';
+import 'package:valcomp/core/app_controller.dart';
+import 'package:valcomp/core/models.dart';
+import 'package:valcomp/core/push_service.dart';
 import 'package:valcomp/core/theme.dart';
 import 'package:valcomp/core/update_service.dart';
 import 'package:valcomp/screens/riot_mobile_login_screen.dart';
@@ -61,5 +67,56 @@ void main() {
     expect(isNewerVersionForTest('1.1.5', 10, '1.1.5', 9), isTrue);
     expect(isNewerVersionForTest('1.1.5', 9, '1.1.5', 9), isFalse);
     expect(isNewerVersionForTest('1.1.4', 99, '1.1.5', 1), isFalse);
+  });
+
+  test('Riot setup is required for first link and invalidated sessions', () {
+    final controller = AppController(pushService: PushService())
+      ..authenticated = true
+      ..me = const MeData(
+        profile: Profile(
+          userId: 'user-1',
+          displayName: 'Player',
+          avatarUrl: '',
+        ),
+      );
+
+    expect(controller.requiresRiotSetup, isTrue);
+
+    controller.me = MeData(
+      profile: controller.me!.profile,
+      riotAccount: const RiotAccount(
+        gameName: 'Player',
+        tagLine: 'BR1',
+        region: 'br',
+        shard: 'na',
+      ),
+    );
+    expect(controller.requiresRiotSetup, isFalse);
+
+    controller.handleRiotRelinkNotification();
+    expect(controller.relinkRequired, isTrue);
+    expect(controller.requiresRiotSetup, isTrue);
+    controller.dispose();
+  });
+
+  test('API relink response immediately invalidates Riot state', () async {
+    final api = ApiClient(
+      baseUrl: 'https://example.test',
+      client: MockClient(
+        (_) async => http.Response(
+          '{"error":{"code":"relink_required","message":"expired"}}',
+          409,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
+    );
+    var invalidated = false;
+    api.onRiotRelinkRequired = () => invalidated = true;
+
+    await expectLater(
+      api.request('GET', '/riot/session/status', authenticated: false),
+      throwsA(isA<ApiException>()),
+    );
+    expect(invalidated, isTrue);
   });
 }

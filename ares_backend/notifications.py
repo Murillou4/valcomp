@@ -60,7 +60,7 @@ class FirebasePushClient:
                 android=messaging.AndroidConfig(
                     priority="high",
                     notification=messaging.AndroidNotification(
-                        channel_id="skin_alerts",
+                        channel_id=str(payload.get("channel_id") or "skin_alerts"),
                         click_action="FLUTTER_NOTIFICATION_CLICK",
                         icon="ic_notification",
                         sound="default",
@@ -111,6 +111,7 @@ class StoreAlertService:
         self.repo = repo
         self.assets = assets
         self.push = push or FirebasePushClient(settings)
+        self._relink_notification_locks: dict[str, asyncio.Lock] = {}
 
     async def register_device(
         self, user_id: str, request: PushDeviceRegisterRequest
@@ -190,6 +191,69 @@ class StoreAlertService:
             "failed_count": len(errors),
             "errors": errors,
         }
+
+    async def notify_riot_relink_required(self, user_id: str) -> int:
+        lock = self._relink_notification_locks.setdefault(user_id, asyncio.Lock())
+        async with lock:
+            return await self._notify_riot_relink_required(user_id)
+
+    async def _notify_riot_relink_required(self, user_id: str) -> int:
+        credentials = await self.repo.get_riot_credentials(user_id)
+        rotation = credentials.updated_at.isoformat() if credentials else "missing"
+        delivery_key = hashlib.sha256(
+            f"{user_id}:riot_relink_required:{rotation}".encode("utf-8")
+        ).hexdigest()
+        if await self.repo.get_notification_delivery(delivery_key):
+            return 0
+
+        devices = [
+            device
+            for device in await self.repo.list_push_devices(user_id)
+            if device.enabled and device.provider == "fcm" and device.push_token
+        ]
+        if not devices:
+            return 0
+
+        results = await self.push.send(
+            [
+                {
+                    "token": device.push_token,
+                    "title": "Entre novamente na Riot",
+                    "body": "Sua sessão expirou. Reconecte a conta para atualizar rank, loja e histórico.",
+                    "channel_id": "account_status",
+                    "data": {
+                        "type": "riot_relink_required",
+                        "route": "riot_setup",
+                        "userId": user_id,
+                    },
+                }
+                for device in devices
+            ]
+        )
+        ticket_ids = [
+            str(result.get("id"))
+            for result in results
+            if result.get("status") == "ok" and result.get("id")
+        ]
+        failures = [
+            str(result.get("message") or "FCM delivery failed.")
+            for result in results
+            if result.get("status") != "ok"
+        ]
+        await self.repo.upsert_notification_delivery(
+            NotificationDelivery(
+                delivery_key=delivery_key,
+                user_id=user_id,
+                item_id="riot_session",
+                item_name="Conta Riot desconectada",
+                source="riot_relink_required",
+                status="sent" if ticket_ids else "failed",
+                ticket_ids=ticket_ids,
+                error="; ".join(failures)[:800],
+                sent_at=datetime.now(UTC),
+            )
+        )
+        return len(ticket_ids)
 
     async def check_daily_store(
         self, user_id: str, daily: StoreDailyResponse

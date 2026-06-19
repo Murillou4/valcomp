@@ -6,6 +6,7 @@ import jwt
 from fastapi.testclient import TestClient
 
 from ares_backend.app import create_app
+from ares_backend.errors import RelinkRequiredError
 from ares_backend.repository import InMemoryRepository
 from ares_backend.riot import RiotSession
 from ares_backend.schemas import RiotAccount, RiotCredentialPayload, RiotCredentialRecord
@@ -207,6 +208,11 @@ class FakeRiotClient:
         return {"Seasons": []}
 
 
+class ExpiredRiotClient(FakeRiotClient):
+    async def mmr(self, session: RiotSession) -> dict[str, Any]:
+        raise RelinkRequiredError("Riot session expired.")
+
+
 class FakePushClient:
     def __init__(self) -> None:
         self.messages: list[dict[str, Any]] = []
@@ -314,7 +320,9 @@ class FakeAssets:
         return category, item_id, item
 
 
-def make_client() -> tuple[TestClient, InMemoryRepository, BackendSettings, FakePushClient]:
+def make_client(
+    *, riot_client: FakeRiotClient | None = None
+) -> tuple[TestClient, InMemoryRepository, BackendSettings, FakePushClient]:
     settings = BackendSettings(
         app_secret_key="unit-test-secret",
         allow_dev_auth=True,
@@ -326,7 +334,7 @@ def make_client() -> tuple[TestClient, InMemoryRepository, BackendSettings, Fake
         settings=settings,
         repository=repo,
         riot_auth=FakeRiotAuth(),
-        riot_client=FakeRiotClient(),
+        riot_client=riot_client or FakeRiotClient(),
         assets=FakeAssets(),
         push_client=push,
     )
@@ -532,6 +540,31 @@ def test_mobile_riot_login_complete_links_current_user() -> None:
     assert stored["entitlement_token"] == "web-entitlement-from-phone"
     assert stored["ssid"] == "web-ssid"
     assert stored["cookies"]["ssid"] == "web-ssid"
+
+
+def test_riot_session_status_notifies_once_and_requires_relink() -> None:
+    client, repo, settings, push = make_client(riot_client=ExpiredRiotClient())
+    seed_linked_user(repo, settings)
+    client.post(
+        "/notifications/devices",
+        headers=auth_headers(),
+        json={
+            "push_token": "fcm-relink-token-123456789012345678901234",
+            "provider": "fcm",
+            "platform": "android",
+        },
+    )
+
+    first = client.get("/riot/session/status", headers=auth_headers())
+    second = client.get("/riot/session/status", headers=auth_headers())
+
+    assert first.status_code == 409
+    assert first.json()["error"]["code"] == "relink_required"
+    assert second.status_code == 409
+    assert len(push.messages) == 1
+    assert push.messages[0]["channel_id"] == "account_status"
+    assert push.messages[0]["data"]["type"] == "riot_relink_required"
+    assert push.messages[0]["data"]["route"] == "riot_setup"
 
 
 def test_link_complete_rejects_expired_riot_access_token() -> None:
@@ -797,6 +830,21 @@ def test_store_alert_job_is_protected_and_runs_watchlists() -> None:
     assert result.json()["checked_users"] == 1
     assert result.json()["sent_count"] == 1
     assert len(push.messages) == 1
+
+
+def test_store_alert_job_checks_linked_users_without_watchlist() -> None:
+    client, repo, settings, _ = make_client()
+    settings.job_secret_token = "job-secret"
+    seed_linked_user(repo, settings)
+
+    result = client.post(
+        "/jobs/store-alerts/run",
+        headers={"X-Job-Token": "job-secret"},
+    )
+
+    assert result.status_code == 200
+    assert result.json()["checked_users"] == 1
+    assert result.json()["relink_required"] == 0
 
 
 def test_diagnostics_are_sanitized_scoped_and_exportable() -> None:

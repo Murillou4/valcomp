@@ -174,7 +174,7 @@ class NotificationsScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '${delivery.source == 'night_market' ? 'Mercado Noturno' : 'Loja diária'} • ${_date(delivery.sentAt)}',
+                                '${_sourceLabel(delivery.source)} • ${_date(delivery.sentAt)}',
                                 style: const TextStyle(
                                   color: ValcompColors.muted,
                                   fontSize: 12,
@@ -194,6 +194,12 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 }
+
+String _sourceLabel(String source) => switch (source) {
+  'night_market' => 'Mercado Noturno',
+  'riot_relink_required' => 'Conta Riot',
+  _ => 'Loja diária',
+};
 
 String _date(DateTime? value) => value == null
     ? 'data indisponível'

@@ -61,6 +61,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Required Riot setup fits a compact Android viewport', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      const LinkScreen(requiredSetup: true),
+      size: const Size(360, 720),
+    );
+
+    expect(find.text('Configurar Riot'), findsOneWidget);
+    expect(find.text('Entrar pela Riot neste celular'), findsOneWidget);
+    expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Store names do not use the watermarked trial font', (
     tester,
   ) async {

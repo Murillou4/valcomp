@@ -350,26 +350,30 @@ class AppPageHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
+    this.showBack = true,
   });
 
   final String title;
   final String? subtitle;
   final Widget? trailing;
+  final bool showBack;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_rounded),
-          style: IconButton.styleFrom(
-            backgroundColor: ValcompColors.surface,
-            fixedSize: const Size(48, 48),
+        if (showBack) ...[
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_rounded),
+            style: IconButton.styleFrom(
+              backgroundColor: ValcompColors.surface,
+              fixedSize: const Size(48, 48),
+            ),
           ),
-        ),
-        const SizedBox(width: 14),
+          const SizedBox(width: 14),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

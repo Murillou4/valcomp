@@ -58,6 +58,7 @@ class ApiClient {
   final http.Client _client;
   final FlutterSecureStorage _storage;
   final String baseUrl;
+  void Function()? onRiotRelinkRequired;
 
   String _accessToken = '';
   String _refreshToken = '';
@@ -273,6 +274,7 @@ class ApiClient {
         method: method,
         path: path,
       );
+      if (exception.relinkRequired) onRiotRelinkRequired?.call();
       unawaited(_uploadDiagnostic(exception));
       throw exception;
     }

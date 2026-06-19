@@ -12,6 +12,7 @@ import 'core/push_service.dart';
 import 'core/theme.dart';
 import 'screens/app_shell.dart';
 import 'screens/auth_screen.dart';
+import 'screens/link_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,9 +79,16 @@ class ValcompApp extends StatelessWidget {
               duration: const Duration(milliseconds: 320),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
-              child: state.authenticated
-                  ? const AppShell(key: ValueKey('app'))
-                  : const AuthScreen(key: ValueKey('auth')),
+              child: !state.authenticated
+                  ? const AuthScreen(key: ValueKey('auth'))
+                  : state.requiresRiotSetup
+                  ? LinkScreen(
+                      key: ValueKey(
+                        state.relinkRequired ? 'riot-relink' : 'riot-setup',
+                      ),
+                      requiredSetup: true,
+                    )
+                  : const AppShell(key: ValueKey('app')),
             );
           },
         ),

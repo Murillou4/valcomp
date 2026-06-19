@@ -10,7 +10,9 @@ import '../widgets/common.dart';
 import 'riot_mobile_login_screen.dart';
 
 class LinkScreen extends StatefulWidget {
-  const LinkScreen({super.key});
+  const LinkScreen({super.key, this.requiredSetup = false});
+
+  final bool requiredSetup;
 
   @override
   State<LinkScreen> createState() => _LinkScreenState();
@@ -85,31 +87,52 @@ class _LinkScreenState extends State<LinkScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppPageHeader(
-                        title: 'Vincular conta',
-                        subtitle: 'Uma única vez no seu computador',
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 11,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: ValcompColors.green.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                          child: const Text(
-                            'SEGURO',
-                            style: TextStyle(
-                              color: ValcompColors.green,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
+                        title: widget.requiredSetup
+                            ? (state.relinkRequired
+                                  ? 'Reconectar Riot'
+                                  : 'Configurar Riot')
+                            : 'Vincular conta',
+                        subtitle: widget.requiredSetup
+                            ? 'Escolha como conectar'
+                            : 'Uma única vez no seu computador',
+                        showBack: !widget.requiredSetup,
+                        trailing: widget.requiredSetup
+                            ? IconButton(
+                                tooltip: 'Sair da conta',
+                                onPressed: busy ? null : state.logout,
+                                style: IconButton.styleFrom(
+                                  backgroundColor: ValcompColors.surface,
+                                  fixedSize: const Size(48, 48),
+                                ),
+                                icon: const Icon(Icons.logout_rounded),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: ValcompColors.green.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                                child: const Text(
+                                  'SEGURO',
+                                  style: TextStyle(
+                                    color: ValcompColors.green,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
                       ),
                       SizedBox(height: compact ? 28 : 74),
                       Text(
                         state.relinkRequired
-                            ? 'Reconecte sua sessão Riot.'
+                            ? 'Entre novamente para continuar.'
+                            : widget.requiredSetup
+                            ? 'Conecte sua conta para começar.'
                             : 'Leve sua loja para o celular.',
                         style: TextStyle(
                           fontSize: compact ? 28 : 34,
@@ -118,9 +141,11 @@ class _LinkScreenState extends State<LinkScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
-                        'Gere o código abaixo e digite-o no Valcomp Companion, no PC onde você joga.',
-                        style: TextStyle(
+                      Text(
+                        widget.requiredSetup
+                            ? 'Entre pela Riot neste celular ou use o Valcomp Companion no computador onde você joga.'
+                            : 'Gere o código abaixo e digite-o no Valcomp Companion, no PC onde você joga.',
+                        style: const TextStyle(
                           color: Color(0xCCFFFFFF),
                           fontSize: 15,
                           height: 1.4,
@@ -458,6 +483,7 @@ class _LinkScreenState extends State<LinkScreen> {
     final state = context.read<AppController>();
     state.selectTab(1);
     unawaited(state.refreshAll(silent: true));
+    if (widget.requiredSetup) return;
     final navigator = Navigator.of(context);
     final rootContext = navigator.context;
     if (navigator.canPop()) navigator.pop();

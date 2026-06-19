@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
@@ -86,6 +86,47 @@ class AppServices:
     executor: EndpointExecutor
 
 
+async def run_riot_account_monitor(svc: AppServices) -> JobRunResponse:
+    user_ids = await svc.repo.list_users_with_riot_accounts()
+    checked = 0
+    relink_required = 0
+    sent = 0
+    errors: list[str] = []
+    for user_id in user_ids:
+        try:
+            session = await svc.riot_auth.session_for_user(user_id, svc.repo)
+            daily = await svc.store.daily_store(user_id, session)
+            result = await svc.alerts.check_daily_store(user_id, daily)
+            checked += 1
+            sent += result.sent_count
+            errors.extend(f"{user_id}: {error}" for error in result.errors)
+        except RelinkRequiredError:
+            relink_required += 1
+            sent += await svc.alerts.notify_riot_relink_required(user_id)
+        except Exception as exc:
+            errors.append(f"{user_id}: {exc}")
+    return JobRunResponse(
+        checked_users=checked,
+        relink_required=relink_required,
+        sent_count=sent,
+        errors=errors[:50],
+    )
+
+
+async def riot_account_monitor_loop(svc: AppServices) -> None:
+    await asyncio.sleep(30)
+    while True:
+        result = await run_riot_account_monitor(svc)
+        emit_log(
+            "riot_account_monitor",
+            checked_users=result.checked_users,
+            relink_required=result.relink_required,
+            sent_count=result.sent_count,
+            errors=len(result.errors),
+        )
+        await asyncio.sleep(max(60, svc.settings.riot_session_monitor_interval_seconds))
+
+
 def create_app(
     *,
     settings: BackendSettings | None = None,
@@ -119,7 +160,16 @@ def create_app(
         ensure_schema = getattr(services.repo, "ensure_schema", None)
         if ensure_schema:
             await ensure_schema()
-        yield
+        monitor_task: asyncio.Task[None] | None = None
+        if services.settings.environment == "production":
+            monitor_task = asyncio.create_task(riot_account_monitor_loop(services))
+        try:
+            yield
+        finally:
+            if monitor_task is not None:
+                monitor_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await monitor_task
 
     app = FastAPI(
         title=settings.app_name,
@@ -270,6 +320,16 @@ def create_app(
                 request_id=request_id,
                 error=type(persist_error).__name__,
             )
+        if code == "relink_required" and user_id:
+            try:
+                await services.alerts.notify_riot_relink_required(user_id)
+            except Exception as notification_error:
+                emit_log(
+                    "relink_notification_failed",
+                    request_id=request_id,
+                    user=user_fingerprint(user_id),
+                    error=type(notification_error).__name__,
+                )
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
@@ -438,6 +498,15 @@ def create_app(
         riot_payload = await normalize_link_payload(riot_payload, svc)
         account = await persist_riot_link(user.id, riot_payload, svc)
         return LinkCompleteResponse(linked=True, riot_account=account)
+
+    @app.get("/riot/session/status")
+    async def riot_session_status(
+        user: Annotated[AuthUser, Depends(current_user)],
+        svc: Annotated[AppServices, Depends(get_services)],
+    ) -> dict[str, bool]:
+        session = await riot_session_for_user(user, svc)
+        await svc.riot_client.mmr(session)
+        return {"valid": True}
 
     @app.get("/me")
     async def get_me(
@@ -878,29 +947,7 @@ def create_app(
         x_job_token: Annotated[str | None, Header(alias="X-Job-Token")] = None,
     ) -> JobRunResponse:
         require_job_token(svc.settings, x_job_token)
-        user_ids = await svc.repo.list_users_with_skin_watches()
-        checked = 0
-        relink_required = 0
-        sent = 0
-        errors: list[str] = []
-        for user_id in user_ids:
-            try:
-                session = await svc.riot_auth.session_for_user(user_id, svc.repo)
-                daily = await svc.store.daily_store(user_id, session)
-                result = await svc.alerts.check_daily_store(user_id, daily)
-                checked += 1
-                sent += result.sent_count
-                errors.extend(f"{user_id}: {error}" for error in result.errors)
-            except RelinkRequiredError:
-                relink_required += 1
-            except Exception as exc:
-                errors.append(f"{user_id}: {exc}")
-        return JobRunResponse(
-            checked_users=checked,
-            relink_required=relink_required,
-            sent_count=sent,
-            errors=errors[:50],
-        )
+        return await run_riot_account_monitor(svc)
 
     return app
 

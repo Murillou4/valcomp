@@ -25,6 +25,7 @@ class PushService {
   final Set<String> _handledOpenIds = <String>{};
   ApiClient? _api;
   VoidCallback? _onOpenStore;
+  VoidCallback? _onRiotRelinkRequired;
 
   static bool get configured =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -45,7 +46,11 @@ class PushService {
     _backgroundHandlerInstalled = true;
   }
 
-  Future<void> register(ApiClient api, {VoidCallback? onOpenStore}) async {
+  Future<void> register(
+    ApiClient api, {
+    VoidCallback? onOpenStore,
+    VoidCallback? onRiotRelinkRequired,
+  }) async {
     if (kIsWeb ||
         defaultTargetPlatform != TargetPlatform.android ||
         !await initializeFirebase()) {
@@ -53,6 +58,7 @@ class PushService {
     }
     _api = api;
     _onOpenStore = onOpenStore ?? _onOpenStore;
+    _onRiotRelinkRequired = onRiotRelinkRequired ?? _onRiotRelinkRequired;
     if (!_initialized) {
       const android = AndroidInitializationSettings('ic_notification');
       await _notifications.initialize(
@@ -70,6 +76,17 @@ class PushService {
             AndroidFlutterLocalNotificationsPlugin
           >()
           ?.createNotificationChannel(channel);
+      const accountChannel = AndroidNotificationChannel(
+        'account_status',
+        'Status da conta',
+        description: 'Avisa quando é necessário entrar novamente na Riot.',
+        importance: Importance.high,
+      );
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(accountChannel);
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
       _initialized = true;
     }
@@ -121,16 +138,20 @@ class PushService {
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;
+    _handleNotificationData(message.data);
+    final relinkRequired =
+        message.data['type']?.toString() == 'riot_relink_required';
     await _notifications.show(
       id: message.hashCode,
       title: notification.title,
       body: notification.body,
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'skin_alerts',
-          'Alertas de skins',
-          channelDescription:
-              'Avisa quando uma skin desejada aparece na sua loja.',
+          relinkRequired ? 'account_status' : 'skin_alerts',
+          relinkRequired ? 'Status da conta' : 'Alertas de skins',
+          channelDescription: relinkRequired
+              ? 'Avisa quando é necessário entrar novamente na Riot.'
+              : 'Avisa quando uma skin desejada aparece na sua loja.',
           importance: Importance.high,
           priority: Priority.high,
           icon: 'ic_notification',
@@ -164,6 +185,8 @@ class PushService {
     final route = data['route']?.toString() ?? data['screen']?.toString() ?? '';
     if (type == 'skin_store_match' || route == 'store') {
       _onOpenStore?.call();
+    } else if (type == 'riot_relink_required' || route == 'riot_setup') {
+      _onRiotRelinkRequired?.call();
     }
   }
 }

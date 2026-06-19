@@ -39,6 +39,7 @@ class BackendSettings(BaseSettings):
     link_code_ttl_seconds: int = 600
     http_timeout_seconds: float = 18.0
     store_snapshot_ttl_seconds: int = 300
+    riot_session_monitor_interval_seconds: int = 300
     allow_unsafe_mutations: bool = False
     job_secret_token: str = ""
     valorant_assets_language: str = "pt-BR"

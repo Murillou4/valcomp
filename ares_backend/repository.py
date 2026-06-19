@@ -59,6 +59,7 @@ class Repository(Protocol):
     async def list_skin_watches(self, user_id: str) -> list[SkinWatch]: ...
     async def delete_skin_watch(self, user_id: str, item_id: str) -> bool: ...
     async def list_users_with_skin_watches(self) -> list[str]: ...
+    async def list_users_with_riot_accounts(self) -> list[str]: ...
     async def get_notification_delivery(self, delivery_key: str) -> NotificationDelivery | None: ...
     async def upsert_notification_delivery(
         self, delivery: NotificationDelivery
@@ -224,6 +225,9 @@ class InMemoryRepository:
             if watch.notify_enabled
         }
         return sorted(users)
+
+    async def list_users_with_riot_accounts(self) -> list[str]:
+        return sorted(self.accounts)
 
     async def get_notification_delivery(self, delivery_key: str) -> NotificationDelivery | None:
         return self.notification_deliveries.get(delivery_key)
@@ -414,6 +418,10 @@ class SupabaseRestRepository:
             "skin_watches",
             {"select": "user_id", "notify_enabled": "eq.true"},
         )
+        return sorted({str(row["user_id"]) for row in rows if row.get("user_id")})
+
+    async def list_users_with_riot_accounts(self) -> list[str]:
+        rows = await self._select_many("riot_accounts", {"select": "user_id"})
         return sorted({str(row["user_id"]) for row in rows if row.get("user_id")})
 
     async def get_notification_delivery(self, delivery_key: str) -> NotificationDelivery | None:
@@ -883,6 +891,10 @@ class PostgresRepository:
         rows = await self._fetch(
             "select distinct user_id from public.skin_watches where notify_enabled=true"
         )
+        return [str(row["user_id"]) for row in rows]
+
+    async def list_users_with_riot_accounts(self) -> list[str]:
+        rows = await self._fetch("select user_id from public.riot_accounts")
         return [str(row["user_id"]) for row in rows]
 
     async def get_notification_delivery(self, delivery_key: str) -> NotificationDelivery | None:

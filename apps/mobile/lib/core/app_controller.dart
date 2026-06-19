@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'api_client.dart';
 import 'diagnostic_log.dart';
@@ -9,13 +9,19 @@ import 'models.dart';
 import 'push_service.dart';
 import 'update_service.dart';
 
-class AppController extends ChangeNotifier {
+class AppController extends ChangeNotifier with WidgetsBindingObserver {
   AppController({ApiClient? api, required PushService pushService})
     : api = api ?? ApiClient(),
-      _pushService = pushService;
+      _pushService = pushService {
+    WidgetsBinding.instance.addObserver(this);
+    this.api.onRiotRelinkRequired = _requireRiotRelink;
+  }
 
   final ApiClient api;
   final PushService _pushService;
+  Timer? _riotSessionTimer;
+  bool _sessionCheckInFlight = false;
+  bool _appInForeground = true;
 
   bool booting = true;
   bool authenticated = false;
@@ -47,6 +53,10 @@ class AppController extends ChangeNotifier {
   DateTime? linkExpiresAt;
 
   bool get linked => me?.riotAccount != null && !relinkRequired;
+  bool get requiresRiotSetup =>
+      authenticated &&
+      me != null &&
+      (me?.riotAccount == null || relinkRequired);
   String get displayName {
     final value = me?.profile.displayName.trim() ?? '';
     return value.isEmpty ? 'Agente' : value.split(' ').first;
@@ -70,6 +80,7 @@ class AppController extends ChangeNotifier {
       }
     }
     booting = false;
+    _syncRiotSessionMonitor();
     notifyListeners();
   }
 
@@ -97,9 +108,8 @@ class AppController extends ChangeNotifier {
       }
       authenticated = true;
       await refreshAll(silent: true);
-      unawaited(
-        _pushService.register(api, onOpenStore: openStoreFromNotification),
-      );
+      unawaited(_registerPush());
+      _syncRiotSessionMonitor();
       return null;
     } on ApiException catch (exception) {
       error = exception.userMessage;
@@ -112,8 +122,10 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _riotSessionTimer?.cancel();
     await api.clearSession();
     authenticated = false;
+    relinkRequired = false;
     me = null;
     store = null;
     nightMarket = null;
@@ -152,7 +164,7 @@ class AppController extends ChangeNotifier {
           await loadStore();
         } on ApiException catch (exception) {
           if (exception.relinkRequired) {
-            relinkRequired = true;
+            _requireRiotRelink();
           } else {
             storeError = exception.userMessage;
             storeErrorDetails = exception.fullDetails;
@@ -163,7 +175,7 @@ class AppController extends ChangeNotifier {
             await loadPlayer();
           } on ApiException catch (exception) {
             if (exception.relinkRequired) {
-              relinkRequired = true;
+              _requireRiotRelink();
             } else {
               playerError = exception.userMessage;
               playerErrorDetails = exception.fullDetails;
@@ -174,18 +186,17 @@ class AppController extends ChangeNotifier {
         store = null;
         player = null;
       }
-      unawaited(
-        _pushService.register(api, onOpenStore: openStoreFromNotification),
-      );
+      unawaited(_registerPush());
     } on ApiException catch (exception) {
       if (exception.relinkRequired) {
-        relinkRequired = true;
+        _requireRiotRelink();
       } else {
         error = exception.userMessage;
         errorDetails = exception.fullDetails;
       }
     } finally {
       loading = false;
+      _syncRiotSessionMonitor();
       notifyListeners();
     }
   }
@@ -211,7 +222,7 @@ class AppController extends ChangeNotifier {
       storeError = '';
       storeErrorDetails = '';
     } on ApiException catch (exception) {
-      if (exception.relinkRequired) relinkRequired = true;
+      if (exception.relinkRequired) _requireRiotRelink();
       rethrow;
     }
   }
@@ -224,7 +235,7 @@ class AppController extends ChangeNotifier {
       playerError = '';
       playerErrorDetails = '';
     } on ApiException catch (exception) {
-      if (exception.relinkRequired) relinkRequired = true;
+      if (exception.relinkRequired) _requireRiotRelink();
       rethrow;
     }
   }
@@ -274,7 +285,7 @@ class AppController extends ChangeNotifier {
           storeErrorDetails = '';
         } on ApiException catch (exception) {
           if (exception.relinkRequired) {
-            relinkRequired = true;
+            _requireRiotRelink();
             error = exception.userMessage;
             errorDetails = exception.fullDetails;
             await DiagnosticLog.instance.record(
@@ -312,7 +323,7 @@ class AppController extends ChangeNotifier {
       return linkedNow;
     } on ApiException catch (exception) {
       if (!silent) {
-        if (exception.relinkRequired) relinkRequired = true;
+        if (exception.relinkRequired) _requireRiotRelink();
         error = exception.userMessage;
         errorDetails = exception.fullDetails;
         notifyListeners();
@@ -389,7 +400,7 @@ class AppController extends ChangeNotifier {
     errorDetails = '';
     notifyListeners();
     try {
-      await _pushService.register(api, onOpenStore: openStoreFromNotification);
+      await _registerPush();
       final response = await api.post('/notifications/test');
       final sentCount = (response['sent_count'] as num?)?.toInt() ?? 0;
       final deviceCount = (response['device_count'] as num?)?.toInt() ?? 0;
@@ -440,7 +451,7 @@ class AppController extends ChangeNotifier {
       );
       relinkRequired = false;
     } on ApiException catch (exception) {
-      if (exception.relinkRequired) relinkRequired = true;
+      if (exception.relinkRequired) _requireRiotRelink();
       nightMarketError = exception.userMessage;
       nightMarketErrorDetails = exception.fullDetails;
     } finally {
@@ -541,12 +552,79 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<void> checkRiotSession() async {
+    if (_sessionCheckInFlight || !_appInForeground || !linked) return;
+    _sessionCheckInFlight = true;
+    try {
+      await api.get('/riot/session/status');
+    } on ApiException catch (exception) {
+      if (exception.relinkRequired) {
+        _requireRiotRelink();
+      }
+    } finally {
+      _sessionCheckInFlight = false;
+    }
+  }
+
+  void handleRiotRelinkNotification() {
+    if (!authenticated || me?.riotAccount == null) return;
+    _requireRiotRelink();
+  }
+
+  Future<void> _registerPush() => _pushService.register(
+    api,
+    onOpenStore: openStoreFromNotification,
+    onRiotRelinkRequired: handleRiotRelinkNotification,
+  );
+
+  void _requireRiotRelink() {
+    final changed = !relinkRequired;
+    relinkRequired = true;
+    store = null;
+    nightMarket = null;
+    player = null;
+    _riotSessionTimer?.cancel();
+    if (changed) {
+      unawaited(
+        DiagnosticLog.instance.record(
+          level: 'warning',
+          category: 'riot_session_invalid',
+          message: 'A sessão Riot ficou inválida e exige novo login.',
+        ),
+      );
+      notifyListeners();
+    }
+  }
+
+  void _syncRiotSessionMonitor() {
+    _riotSessionTimer?.cancel();
+    if (!_appInForeground || !linked) return;
+    _riotSessionTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(checkRiotSession());
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appInForeground = state == AppLifecycleState.resumed;
+    _syncRiotSessionMonitor();
+    if (_appInForeground) unawaited(checkRiotSession());
+  }
+
   void openStoreFromNotification() {
     navIndex = 0;
     notifyListeners();
     if (authenticated && linked) {
       unawaited(loadStore());
     }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _riotSessionTimer?.cancel();
+    api.onRiotRelinkRequired = null;
+    super.dispose();
   }
 }
 
