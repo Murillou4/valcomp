@@ -27,12 +27,12 @@ REGION_TO_SHARD = {
     "kr": "kr",
 }
 
-RIOT_WEB_AUTH_PARAMS = {
-    "redirect_uri": "https://playvalorant.com/opt_in",
-    "client_id": "play-valorant-web-prod",
+RIOT_CLIENT_AUTH_PARAMS = {
+    "redirect_uri": "http://localhost/redirect",
+    "client_id": "riot-client",
     "response_type": "token id_token",
     "nonce": "1",
-    "scope": "account openid",
+    "scope": "openid link ban lol_region account",
 }
 
 
@@ -142,14 +142,12 @@ class RiotAuthService:
         if clean_ssid:
             cookie_map["ssid"] = clean_ssid
 
-        used_reauth_token = False
         if access_token_needs_refresh(access_token, leeway_seconds=300):
             if not clean_ssid:
                 raise RelinkRequiredError("A sessão Riot retornada pelo login já veio expirada.")
             auth_data = await self._reauth_with_ssid(clean_ssid, cookie_map)
             access_token = auth_data.get("access_token", "")
             id_token = auth_data.get("id_token", id_token)
-            used_reauth_token = True
 
         try:
             return await self._payload_from_web_tokens(
@@ -160,19 +158,7 @@ class RiotAuthService:
                 client_version=client_version,
             )
         except RelinkRequiredError:
-            if not clean_ssid or used_reauth_token:
-                raise
-            auth_data = await self._reauth_with_ssid(clean_ssid, cookie_map)
-            fallback_access_token = auth_data.get("access_token", "")
-            if not fallback_access_token or fallback_access_token == access_token:
-                raise
-            return await self._payload_from_web_tokens(
-                access_token=fallback_access_token,
-                id_token=auth_data.get("id_token", id_token),
-                ssid=clean_ssid,
-                cookies=cookie_map,
-                client_version=client_version,
-            )
+            raise
 
     async def _payload_from_web_tokens(
         self,
@@ -242,7 +228,7 @@ class RiotAuthService:
         cookie_header = _cookie_header(ssid, cookies)
         response = await self.client.get(
             "https://auth.riotgames.com/authorize",
-            params=RIOT_WEB_AUTH_PARAMS,
+            params=RIOT_CLIENT_AUTH_PARAMS,
             headers={"Cookie": cookie_header, "User-Agent": ""},
         )
         location = response.headers.get("location", "")

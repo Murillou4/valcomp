@@ -119,7 +119,7 @@ def test_mobile_web_login_prefers_redirect_access_token_before_ssid_reauth() -> 
                 302,
                 headers={
                     "location": (
-                        "https://playvalorant.com/opt_in#access_token=ssid-access-token"
+                        "http://localhost/redirect#access_token=ssid-access-token"
                         "&id_token=ssid-id-token"
                     )
                 },
@@ -169,27 +169,32 @@ def test_mobile_web_login_prefers_redirect_access_token_before_ssid_reauth() -> 
     asyncio.run(run())
 
 
-def test_mobile_web_login_falls_back_to_ssid_when_redirect_token_is_rejected() -> None:
+def test_mobile_web_login_refreshes_expired_redirect_token_with_ssid() -> None:
+    expired_token = jwt.encode(
+        {"exp": datetime.now(UTC) - timedelta(minutes=1)},
+        "unused-test-key",
+        algorithm="HS256",
+    )
+
     def handler(request: httpx.Request) -> httpx.Response:
         authorization = request.headers.get("authorization", "")
         if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":
-            assert request.url.params.get("client_id") == "play-valorant-web-prod"
-            assert request.url.params.get("redirect_uri") == "https://playvalorant.com/opt_in"
-            assert request.url.params.get("scope") == "account openid"
+            assert request.url.params.get("client_id") == "riot-client"
+            assert request.url.params.get("redirect_uri") == "http://localhost/redirect"
+            assert request.url.params.get("scope") == "openid link ban lol_region account"
             assert "ssid=ssid-cookie" in request.headers.get("cookie", "")
             assert "clid=cookie-value" in request.headers.get("cookie", "")
             return httpx.Response(
                 302,
                 headers={
                     "location": (
-                        "https://playvalorant.com/opt_in#access_token=ssid-access-token"
+                        "http://localhost/redirect#access_token=ssid-access-token"
                         "&id_token=ssid-id-token"
                     )
                 },
             )
         if request.url.host == "entitlements.auth.riotgames.com":
-            if authorization == "Bearer direct-access-token":
-                return httpx.Response(403, json={"error": "forbidden"})
+            assert authorization != f"Bearer {expired_token}"
             if authorization == "Bearer ssid-access-token":
                 return httpx.Response(200, json={"entitlements_token": "ssid-entitlement"})
         if request.url.host == "auth.riotgames.com" and request.url.path == "/userinfo":
@@ -215,7 +220,7 @@ def test_mobile_web_login_falls_back_to_ssid_when_redirect_token_is_rejected() -
         )
 
         payload = await service.payload_from_web_login(
-            access_token="direct-access-token",
+            access_token=expired_token,
             id_token="direct-id-token",
             ssid="ssid-cookie",
             cookies={"ssid": "ssid-cookie", "clid": "cookie-value"},
@@ -230,20 +235,10 @@ def test_mobile_web_login_falls_back_to_ssid_when_redirect_token_is_rejected() -
     asyncio.run(run())
 
 
-def test_mobile_web_login_entitlement_403_becomes_relink_required() -> None:
+def test_mobile_web_login_entitlement_403_is_not_masked_by_reauth_failure() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":
-            assert request.url.params.get("client_id") == "play-valorant-web-prod"
-            assert request.url.params.get("redirect_uri") == "https://playvalorant.com/opt_in"
-            return httpx.Response(
-                302,
-                headers={
-                    "location": (
-                        "https://playvalorant.com/opt_in#access_token=valorant-web-access"
-                        "&id_token=valorant-web-id"
-                    )
-                },
-            )
+            return httpx.Response(200, text="<html>login</html>")
         if request.url.host == "entitlements.auth.riotgames.com":
             return httpx.Response(403, json={"error": "forbidden"})
         return httpx.Response(200, json={})
@@ -256,7 +251,7 @@ def test_mobile_web_login_entitlement_403_becomes_relink_required() -> None:
             client=http,
         )
 
-        with pytest.raises(RelinkRequiredError):
+        with pytest.raises(RelinkRequiredError, match="buscar entitlement"):
             await service.payload_from_web_login(
                 access_token="web-access-token",
                 id_token="web-id-token",

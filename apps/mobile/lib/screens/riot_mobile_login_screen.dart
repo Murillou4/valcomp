@@ -26,11 +26,11 @@ class _RiotMobileLoginScreenState extends State<RiotMobileLoginScreen> {
 
   static final WebUri _loginUri = WebUri.uri(
     Uri.https('auth.riotgames.com', '/authorize', {
-      'redirect_uri': 'https://playvalorant.com/opt_in',
-      'client_id': 'play-valorant-web-prod',
+      'redirect_uri': 'http://localhost/redirect',
+      'client_id': 'riot-client',
       'response_type': 'token id_token',
       'nonce': '1',
-      'scope': 'account openid',
+      'scope': 'openid link ban lol_region account',
     }),
   );
 

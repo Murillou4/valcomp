@@ -26,7 +26,7 @@ void main() {
 
   test('Riot mobile login parser extracts redirect tokens', () {
     final tokens = riotTokenParametersFromUrlForTest(
-      'https://playvalorant.com/opt_in#access_token=access-123&id_token=id-456&token_type=bearer',
+      'http://localhost/redirect#access_token=access-123&id_token=id-456&token_type=bearer',
     );
 
     expect(tokens, isNotNull);
@@ -34,17 +34,20 @@ void main() {
     expect(tokens['id_token'], 'id-456');
   });
 
-  test('Riot mobile login uses Valorant web authorization client', () {
+  test('Riot mobile login uses Riot client authorization', () {
     final loginUri = Uri.parse(riotLoginUrlForTest());
 
     expect(loginUri.host, 'auth.riotgames.com');
     expect(loginUri.path, '/authorize');
-    expect(loginUri.queryParameters['client_id'], 'play-valorant-web-prod');
+    expect(loginUri.queryParameters['client_id'], 'riot-client');
     expect(
       loginUri.queryParameters['redirect_uri'],
-      'https://playvalorant.com/opt_in',
+      'http://localhost/redirect',
     );
-    expect(loginUri.queryParameters['scope'], 'account openid');
+    expect(
+      loginUri.queryParameters['scope'],
+      'openid link ban lol_region account',
+    );
   });
 
   test('update version comparator honors version and build', () {
