@@ -27,8 +27,6 @@ class LiveScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _Header(state: state),
-              const SizedBox(height: 18),
-              const _ExperimentalNotice(),
               if (state.liveError.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 ErrorNotice(message: state.liveError),
@@ -53,7 +51,27 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final presentation = _phasePresentation(state.liveSnapshot.phase);
+    final live = state.liveSnapshot;
+    final active = state.companionDevices
+        .where((device) => device.active)
+        .firstOrNull;
+    final companionOnline = live.revision > 0
+        ? live.online
+        : active?.online == true;
+    final basePresentation = _phasePresentation(live.phase);
+    final presentation = live.phase == 'offline' && companionOnline
+        ? (
+            'Riot Client indisponível',
+            live.state['message']?.toString().isNotEmpty == true
+                ? live.state['message'].toString()
+                : 'Abra o VALORANT para carregar o estado da partida.',
+          )
+        : basePresentation;
+    final statusLabel = companionOnline
+        ? 'PC CONECTADO'
+        : active != null
+        ? 'PC OFFLINE'
+        : 'NÃO PAREADO';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -63,12 +81,10 @@ class _Header extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  _StatusDot(online: state.liveSnapshot.online),
+                  _StatusDot(online: companionOnline),
                   const SizedBox(width: 8),
                   Text(
-                    state.liveSnapshot.online
-                        ? 'COMPANION ONLINE'
-                        : 'COMPANION OFFLINE',
+                    statusLabel,
                     style: const TextStyle(
                       color: ValcompColors.muted,
                       fontSize: 11,
@@ -103,32 +119,6 @@ class _Header extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ExperimentalNotice extends StatelessWidget {
-  const _ExperimentalNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: ValcompColors.amber.withValues(alpha: 0.08),
-        border: const Border(
-          left: BorderSide(color: ValcompColors.amber, width: 2),
-        ),
-      ),
-      child: const Text(
-        'Experimental e não aprovado pela Riot. Ações sempre exigem um toque manual.',
-        style: TextStyle(
-          color: ValcompColors.amber,
-          fontSize: 12,
-          height: 1.35,
-        ),
-      ),
     );
   }
 }
@@ -194,53 +184,50 @@ class _OfflineView extends StatelessWidget {
     final active = state.companionDevices
         .where((device) => device.active)
         .firstOrNull;
+    final companionOnline = state.liveSnapshot.revision > 0
+        ? state.liveSnapshot.online
+        : active?.online == true;
     final code = state.companionPairCode;
+    final riotMessage =
+        state.liveSnapshot.state['message']?.toString() ??
+        'Aguardando estado do Riot Client.';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(
-          title: active == null ? 'Parear este celular' : 'Companion pareado',
+          title: active == null ? 'Conectar ao PC' : 'Seu computador',
         ),
         const SizedBox(height: 12),
         if (active == null && code == null)
-          FilledButton.icon(
-            onPressed: state.liveLoading
-                ? null
-                : state.generateCompanionPairCode,
-            icon: const Icon(Icons.link_rounded),
-            label: const Text('Gerar código do Companion'),
+          _SetupPanel(
+            loading: state.liveLoading,
+            onGenerate: state.generateCompanionPairCode,
           )
         else if (active == null && code != null)
           _PairCode(code: code)
         else if (active != null)
           _DeviceRow(
             device: active,
+            online: companionOnline,
             onRemove: () => _confirmRemove(context, state, active),
           ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
+        const _SectionTitle(title: 'Alertas'),
+        const SizedBox(height: 10),
         _SoundToggle(state: state),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
         const _SectionTitle(title: 'Diagnóstico'),
         const SizedBox(height: 10),
-        _ValueRow(
-          label: 'Servidor',
-          value: state.liveConnected
-              ? 'Conectado'
-              : state.liveConnectionMessage,
+        _DiagnosticPanel(
+          serverOnline: state.liveConnected,
+          serverMessage: state.liveConnectionMessage,
+          riotMessage: riotMessage,
+          riotOnline: state.liveSnapshot.phase != 'offline',
+          companionOnline: companionOnline,
+          device: active,
         ),
-        _ValueRow(
-          label: 'Riot Client',
-          value:
-              state.liveSnapshot.state['message']?.toString() ??
-              'Sem estado recente',
-        ),
-        if (active != null)
-          _ValueRow(
-            label: 'Versão do PC',
-            value: active.appVersion.isEmpty
-                ? 'Indisponível'
-                : active.appVersion,
-          ),
+        const SizedBox(height: 20),
+        const _ExperimentalFooter(),
       ],
     );
   }
@@ -269,6 +256,175 @@ class _OfflineView extends StatelessWidget {
     );
     if (confirmed == true) await state.revokeCompanion(device.deviceId);
   }
+}
+
+class _SetupPanel extends StatelessWidget {
+  const _SetupPanel({required this.loading, required this.onGenerate});
+  final bool loading;
+  final VoidCallback onGenerate;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: ValcompColors.surface,
+      border: Border.all(color: ValcompColors.border),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.desktop_windows_outlined, size: 28),
+        const SizedBox(height: 16),
+        const Text(
+          'Pareie o Companion deste PC',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 5),
+        const Text(
+          'Gere um código e digite-o no aplicativo do Windows.',
+          style: TextStyle(color: ValcompColors.muted, fontSize: 13),
+        ),
+        const SizedBox(height: 18),
+        FilledButton.icon(
+          onPressed: loading ? null : onGenerate,
+          icon: const Icon(Icons.link_rounded),
+          label: const Text('Gerar código'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DiagnosticPanel extends StatelessWidget {
+  const _DiagnosticPanel({
+    required this.serverOnline,
+    required this.serverMessage,
+    required this.riotMessage,
+    required this.riotOnline,
+    required this.companionOnline,
+    required this.device,
+  });
+  final bool serverOnline;
+  final String serverMessage;
+  final String riotMessage;
+  final bool riotOnline;
+  final bool companionOnline;
+  final CompanionDevice? device;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    decoration: BoxDecoration(
+      color: ValcompColors.surface,
+      border: Border.all(color: ValcompColors.border),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      children: [
+        _DiagnosticItem(
+          label: 'Servidor Valcomp',
+          value: serverOnline ? 'Conectado' : serverMessage,
+          online: serverOnline,
+        ),
+        _DiagnosticItem(
+          label: 'Riot Client',
+          value: riotMessage,
+          online: riotOnline,
+          last: device == null,
+        ),
+        if (device != null)
+          _DiagnosticItem(
+            label:
+                'Companion ${device!.appVersion.isEmpty ? '' : device!.appVersion}',
+            value: companionOnline ? 'Online agora' : 'PC offline',
+            online: companionOnline,
+            last: true,
+          ),
+      ],
+    ),
+  );
+}
+
+class _DiagnosticItem extends StatelessWidget {
+  const _DiagnosticItem({
+    required this.label,
+    required this.value,
+    required this.online,
+    this.last = false,
+  });
+  final String label;
+  final String value;
+  final bool online;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+    decoration: BoxDecoration(
+      border: last
+          ? null
+          : const Border(bottom: BorderSide(color: ValcompColors.border)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: _StatusDot(online: online),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: ValcompColors.muted,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ExperimentalFooter extends StatelessWidget {
+  const _ExperimentalFooter();
+
+  @override
+  Widget build(BuildContext context) => const Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(Icons.info_outline_rounded, size: 16, color: ValcompColors.muted),
+      SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          'Experimental e não aprovado pela Riot. Ações exigem confirmação manual.',
+          style: TextStyle(
+            color: ValcompColors.muted,
+            fontSize: 11,
+            height: 1.4,
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 class _PairCode extends StatelessWidget {
@@ -328,8 +484,13 @@ class _PairCode extends StatelessWidget {
 }
 
 class _DeviceRow extends StatelessWidget {
-  const _DeviceRow({required this.device, required this.onRemove});
+  const _DeviceRow({
+    required this.device,
+    required this.online,
+    required this.onRemove,
+  });
   final CompanionDevice device;
+  final bool online;
   final VoidCallback onRemove;
 
   @override
@@ -341,7 +502,7 @@ class _DeviceRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _StatusDot(online: device.online),
+          _StatusDot(online: online),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -352,7 +513,7 @@ class _DeviceRow extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 Text(
-                  device.online ? 'Online agora' : 'Offline',
+                  online ? 'Online agora' : 'Offline',
                   style: const TextStyle(
                     color: ValcompColors.muted,
                     fontSize: 12,
@@ -382,13 +543,19 @@ class _SoundToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SwitchListTile.adaptive(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      tileColor: ValcompColors.surface,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: ValcompColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
       title: const Text(
         'Som de partida encontrada',
-        style: TextStyle(fontWeight: FontWeight.w800),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
       ),
       subtitle: const Text(
-        'Alerta alto normal; respeita volume e Não Perturbe.',
+        'Som alto ao encontrar partida.',
+        style: TextStyle(color: ValcompColors.muted, fontSize: 12),
       ),
       value: state.matchFoundSoundEnabled,
       activeTrackColor: ValcompColors.red,
@@ -1189,28 +1356,48 @@ class _ValueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stacked = value.length > 24;
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
+      padding: EdgeInsets.symmetric(vertical: stacked ? 11 : 0),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: ValcompColors.border)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(color: ValcompColors.muted),
+      child: stacked
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: ValcompColors.muted,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(color: ValcompColors.muted),
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

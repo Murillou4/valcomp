@@ -8,8 +8,15 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from ares_backend.app import create_app
+from ares_backend.live_store import _command, _snapshot
 from ares_backend.repository import InMemoryRepository
-from ares_backend.schemas import RiotAccount, RiotCredentialPayload, RiotCredentialRecord
+from ares_backend.schemas import (
+    LiveCommandRecord,
+    LiveSnapshot,
+    RiotAccount,
+    RiotCredentialPayload,
+    RiotCredentialRecord,
+)
 from ares_backend.settings import BackendSettings
 
 
@@ -303,3 +310,36 @@ def test_mobile_websocket_without_token_is_rejected_cleanly() -> None:
                 raise AssertionError("unauthenticated websocket was accepted")
         except WebSocketDisconnect as error:
             assert error.code == 4401
+
+
+def test_postgres_json_text_is_decoded_for_live_records() -> None:
+    now = datetime.now(UTC)
+    snapshot = _snapshot(
+        {
+            "user_id": "live-user",
+            "device_id": "device-1",
+            "revision": 4,
+            "phase": "lobby",
+            "state": '{"region":"BR","queue":{"id":"competitive"}}',
+            "updated_at": now,
+        }
+    )
+    command = _command(
+        {
+            "command_id": "command-1",
+            "user_id": "live-user",
+            "device_id": "device-1",
+            "command": "party.change_queue",
+            "payload": '{"queue_id":"competitive"}',
+            "status": "queued",
+            "result": '{"observed":true}',
+            "created_at": now,
+            "expires_at": now + timedelta(seconds=8),
+        }
+    )
+
+    assert isinstance(snapshot, LiveSnapshot)
+    assert snapshot.state["queue"]["id"] == "competitive"
+    assert isinstance(command, LiveCommandRecord)
+    assert command.payload == {"queue_id": "competitive"}
+    assert command.result == {"observed": True}

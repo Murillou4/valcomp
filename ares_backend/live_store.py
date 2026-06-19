@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import secrets
 from datetime import UTC, datetime
 from typing import Any
@@ -459,17 +460,32 @@ def _device(row: Any) -> CompanionDeviceRecord | None:
 
 def _snapshot(row: Any) -> LiveSnapshot | None:
     data = _dict(row)
+    if data:
+        data["state"] = _json_object(data.get("state"))
     return LiveSnapshot(**data) if data else None
 
 
 def _command(row: Any) -> LiveCommandRecord | None:
     data = _dict(row)
+    if data:
+        data["payload"] = _json_object(data.get("payload"))
+        data["result"] = _json_object(data.get("result"))
     return LiveCommandRecord(**data) if data else None
 
 
-def _json(value: dict[str, Any]) -> str:
-    import json
+def _json_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+            return decoded if isinstance(decoded, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return {}
 
+
+def _json(value: dict[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 

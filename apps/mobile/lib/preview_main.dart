@@ -8,6 +8,7 @@ import 'core/push_service.dart';
 import 'core/theme.dart';
 import 'screens/home_screen.dart';
 import 'screens/item_details_screen.dart';
+import 'screens/live_screen.dart';
 import 'screens/wishlist_screen.dart';
 
 Future<void> main() async {
@@ -32,6 +33,7 @@ class ValcompPreview extends StatelessWidget {
         home: Scaffold(
           body: switch (screen) {
             'wishlist' => const WishlistScreen(),
+            'live' => const LiveScreen(),
             'item' => const ItemDetailsScreen(
               itemId: 'd980c0c8-492b-b8df-2d91-af99a7707170',
               name: 'Vandal Imortalizados',

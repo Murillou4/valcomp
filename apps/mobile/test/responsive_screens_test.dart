@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:valcomp/core/app_controller.dart';
+import 'package:valcomp/core/live_models.dart';
 import 'package:valcomp/core/models.dart';
 import 'package:valcomp/core/theme.dart';
 import 'package:valcomp/preview_main.dart';
@@ -20,12 +21,13 @@ void main() {
     WidgetTester tester,
     Widget screen, {
     Size size = const Size(360, 800),
+    AppController? controller,
   }) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       ChangeNotifierProvider<AppController>.value(
-        value: PreviewController(),
+        value: controller ?? PreviewController(),
         child: MaterialApp(
           theme: buildValcompTheme(),
           home: Scaffold(body: screen),
@@ -84,8 +86,41 @@ void main() {
     await pumpScreen(tester, const LiveScreen(), size: const Size(360, 720));
 
     expect(find.text('Companion offline'), findsWidgets);
-    expect(find.text('Gerar código do Companion'), findsOneWidget);
+    expect(find.text('Gerar código'), findsOneWidget);
     expect(find.text('Som de partida encontrada'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Live separates an online PC from an unavailable Riot Client', (
+    tester,
+  ) async {
+    final controller = PreviewController()
+      ..companionDevices = [
+        const CompanionDevice(
+          deviceId: 'desktop',
+          deviceName: 'CDA',
+          appVersion: '2.1.0',
+          active: true,
+          online: true,
+        ),
+      ]
+      ..liveSnapshot = const LiveSnapshot(
+        phase: 'offline',
+        revision: 4,
+        state: {'message': 'Abra o Riot Client e o VALORANT.'},
+        online: true,
+      );
+
+    await pumpScreen(
+      tester,
+      const LiveScreen(),
+      size: const Size(360, 720),
+      controller: controller,
+    );
+
+    expect(find.text('PC CONECTADO'), findsOneWidget);
+    expect(find.text('Riot Client indisponível'), findsOneWidget);
+    expect(find.text('Online agora'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

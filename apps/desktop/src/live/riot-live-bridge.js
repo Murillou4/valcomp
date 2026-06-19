@@ -236,10 +236,10 @@ class RiotLiveBridge extends EventEmitter {
   async ensureContext() {
     if (this.context && Date.now() - this.contextDetectedAt < 45000) return this.context;
     const lockfile = readLockfile();
-    const [entitlements, regionLocale, sessions] = await Promise.all([
-      localRequest(lockfile, "GET", "/entitlements/v1/token"),
-      localRequest(lockfile, "GET", "/riotclient/region-locale"),
-      localRequest(lockfile, "GET", "/product-session/v1/external-sessions"),
+    const entitlements = await localRequest(lockfile, "GET", "/entitlements/v1/token");
+    const [regionLocale, sessions] = await Promise.all([
+      optionalLocalRequest(lockfile, "/riotclient/region-locale"),
+      optionalLocalRequest(lockfile, "/product-session/v1/external-sessions"),
     ]);
     const session = parseSessions(sessions);
     const log = parseShooterLog();
@@ -382,9 +382,15 @@ class RiotLiveBridge extends EventEmitter {
     socket.on("message", () => this.emit("changed"));
     socket.on("close", () => {
       if (this.localSocket === socket) this.localSocket = null;
-      setTimeout(() => this.context && this.connectLocalEvents(), 3000);
+      setTimeout(() => this.context && this.connectLocalEvents(), 10000);
     });
-    socket.on("error", (error) => this.log("warning", "local_event_socket_error", { error: String(error) }));
+    socket.on("error", (error) => {
+      this.log("warning", "local_event_socket_error", { error: String(error) });
+      if (/ECONNREFUSED|ECONNRESET|socket hang up/i.test(String(error))) {
+        this.context = null;
+        this.contextDetectedAt = 0;
+      }
+    });
   }
 
   async chatChannels() {
@@ -613,6 +619,15 @@ function localRequest(lockfile, method, apiPath, body = null) {
   });
 }
 
+async function optionalLocalRequest(lockfile, apiPath, request = localRequest) {
+  try {
+    return await request(lockfile, "GET", apiPath);
+  } catch (error) {
+    if (error?.status === 404) return {};
+    throw error;
+  }
+}
+
 function parseSessions(data) {
   const session = Object.values(data || {}).find((value) => value?.productId === "valorant");
   const result = {};
@@ -724,4 +739,4 @@ function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-module.exports = { RiotLiveBridge, opaqueId, observedChange };
+module.exports = { RiotLiveBridge, opaqueId, observedChange, optionalLocalRequest };

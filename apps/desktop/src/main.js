@@ -184,7 +184,9 @@ function localGet(lockfile, endpoint) {
         response.on("end", () => {
           const body = Buffer.concat(chunks).toString("utf8");
           if ((response.statusCode || 500) >= 400) {
-            reject(new Error(`A API local da Riot respondeu HTTP ${response.statusCode}.`));
+            const error = new Error(`A API local da Riot respondeu HTTP ${response.statusCode}.`);
+            error.status = response.statusCode;
+            reject(error);
             return;
           }
           try {
@@ -199,6 +201,15 @@ function localGet(lockfile, endpoint) {
     request.on("error", reject);
     request.end();
   });
+}
+
+async function localGetOptional(lockfile, endpoint) {
+  try {
+    return await localGet(lockfile, endpoint);
+  } catch (error) {
+    if (error?.status === 404) return {};
+    throw error;
+  }
 }
 
 function parseSessions(data) {
@@ -345,10 +356,10 @@ async function checkDesktopUpdate() {
 async function detectRiotSession() {
   logEvent("info", "riot_detection_started");
   const lockfile = readLockfile();
-  const [entitlements, regionLocale, sessions] = await Promise.all([
-    localGet(lockfile, "entitlements/v1/token"),
-    localGet(lockfile, "riotclient/region-locale"),
-    localGet(lockfile, "product-session/v1/external-sessions"),
+  const entitlements = await localGet(lockfile, "entitlements/v1/token");
+  const [regionLocale, sessions] = await Promise.all([
+    localGetOptional(lockfile, "riotclient/region-locale"),
+    localGetOptional(lockfile, "product-session/v1/external-sessions"),
   ]);
   const session = parseSessions(sessions);
   const shooterLog = parseShooterLog();
@@ -577,13 +588,13 @@ function registerIpc() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 780,
+    width: 1060,
     height: 720,
-    minWidth: 700,
-    minHeight: 680,
+    minWidth: 860,
+    minHeight: 620,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: "#090E15",
+    backgroundColor: "#0B0C0E",
     icon: path.join(__dirname, "..", "assets", "app-icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -605,6 +616,10 @@ function createWindow() {
     if (!process.argv.includes("--hidden")) mainWindow.show();
     const screenshotPath = process.env.VALCOMP_SCREENSHOT_PATH;
     if (screenshotPath) {
+      const screenshotPage = process.env.VALCOMP_SCREENSHOT_PAGE;
+      if (["overview", "riot", "mobile", "live", "diagnostics"].includes(screenshotPage)) {
+        mainWindow.webContents.executeJavaScript(`navigate(${JSON.stringify(screenshotPage)})`);
+      }
       setTimeout(async () => {
         const image = await mainWindow.webContents.capturePage();
         fs.writeFileSync(screenshotPath, image.toPNG());

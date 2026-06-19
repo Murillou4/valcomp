@@ -1,7 +1,31 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { opaqueId, observedChange } = require("../src/live/riot-live-bridge");
+const {
+  opaqueId,
+  observedChange,
+  optionalLocalRequest,
+} = require("../src/live/riot-live-bridge");
+
+test("optional Riot context endpoints tolerate only HTTP 404", async () => {
+  const missing = new Error("missing");
+  missing.status = 404;
+  assert.deepEqual(
+    await optionalLocalRequest({}, "/optional", async () => {
+      throw missing;
+    }),
+    {},
+  );
+
+  const unavailable = new Error("unavailable");
+  unavailable.status = 503;
+  await assert.rejects(
+    optionalLocalRequest({}, "/optional", async () => {
+      throw unavailable;
+    }),
+    /unavailable/,
+  );
+});
 
 test("opaque IDs are deterministic and never expose the Riot identifier", () => {
   const raw = "real-riot-player-identifier";

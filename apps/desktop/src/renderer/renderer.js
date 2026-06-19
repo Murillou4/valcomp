@@ -32,6 +32,10 @@ function setRiotStatus(type, title, message) {
   elements.riotBadge.className = `status-badge ${type}`;
   elements.riotBadge.textContent =
     type === "success" ? "Detectada" : type === "error" ? "Erro" : type === "warning" ? "Atenção" : "Verificando";
+  byId("overview-riot").textContent =
+    type === "success" ? "Sessão pronta" : type === "warning" ? "Atenção necessária" : type === "error" ? "Indisponível" : "Verificando";
+  byId("overview-riot-detail").textContent = message;
+  byId("riot-nav-dot").className = type === "success" ? "online" : type === "error" ? "error" : type === "warning" ? "warning" : "";
 }
 
 function syncControls() {
@@ -140,6 +144,12 @@ function applyLiveStatus(status) {
   elements.pairedDevice.hidden = !paired;
   elements.pairBadge.className = `status-badge ${paired ? "success" : "neutral"}`;
   elements.pairBadge.textContent = paired ? "Pareado" : "Não pareado";
+  byId("mobile-page-title").textContent = paired ? "Companion pareado" : "Conectar celular";
+  byId("overview-mobile").textContent = paired ? "PC pareado" : "Não pareado";
+  byId("overview-mobile-detail").textContent = paired
+    ? currentLiveStatus.device?.deviceName || "Este computador"
+    : "Sem dispositivo ativo";
+  byId("mobile-nav-dot").className = paired ? "online" : "";
   if (paired) {
     byId("paired-device-name").textContent = currentLiveStatus.device?.deviceName || "Este PC";
     byId("paired-device-id").textContent = `Dispositivo ${String(currentLiveStatus.device?.deviceId || "").slice(0, 8)}`;
@@ -152,6 +162,12 @@ function applyLiveStatus(status) {
     const connected = backend.status === "connected";
     elements.globalConnection.className = `connection-pill ${connected ? "online" : backend.status === "error" ? "error" : ""}`;
     elements.globalConnection.querySelector("b").textContent = connected ? "Celular conectado" : backend.message;
+    byId("overview-mobile-detail").textContent = connected
+      ? "Canal em tempo real conectado"
+      : paired
+        ? "Reconectando ao servidor"
+        : "Sem dispositivo ativo";
+    byId("mobile-nav-dot").className = connected ? "online" : paired ? "warning" : "";
     byId("mobile-live-state").textContent = connected ? "Conectado" : paired ? "Reconectando" : "Não pareado";
   } else {
     byId("mobile-live-state").textContent = paired ? "Pareado" : "Não pareado";
@@ -170,6 +186,10 @@ function applySnapshot(snapshot) {
   byId("live-region").textContent = state.region || "--";
   byId("riot-live-state").textContent = phase === "offline" ? "Offline" : "Conectado";
   byId("live-tab-dot").classList.toggle("online", phase !== "offline" && phase !== "error");
+  byId("live-tab-dot").classList.toggle("error", phase === "error");
+  byId("overview-phase").textContent = phaseInfo.label;
+  byId("overview-live-title").textContent = phaseInfo.title;
+  byId("overview-live-detail").textContent = state.message || phaseInfo.subtitle;
 
   const map = state.match?.map || state.map;
   const hasMap = Boolean(map?.name || map?.id);
@@ -270,12 +290,30 @@ function updateQueueClock() {
   byId("queue-time").textContent = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
 }
 
-document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((item) => item.classList.toggle("active", item === tab));
-    document.querySelectorAll(".page").forEach((page) => page.classList.toggle("active", page.id === `page-${tab.dataset.tab}`));
-  });
-});
+const sectionNames = {
+  overview: "VISÃO GERAL",
+  riot: "CONTA RIOT",
+  mobile: "CELULAR",
+  live: "AO VIVO",
+  diagnostics: "DIAGNÓSTICO",
+};
+
+function navigate(pageName) {
+  document.querySelectorAll(".nav-item").forEach((item) =>
+    item.classList.toggle("active", item.dataset.page === pageName),
+  );
+  document.querySelectorAll(".page").forEach((page) =>
+    page.classList.toggle("active", page.id === `page-${pageName}`),
+  );
+  byId("current-section").textContent = sectionNames[pageName] || "VALCOMP";
+}
+
+document.querySelectorAll(".nav-item").forEach((item) =>
+  item.addEventListener("click", () => navigate(item.dataset.page)),
+);
+document.querySelectorAll("[data-go]").forEach((item) =>
+  item.addEventListener("click", () => navigate(item.dataset.go)),
+);
 
 elements.code.addEventListener("input", syncControls);
 elements.pairCode.addEventListener("input", syncControls);
@@ -304,6 +342,9 @@ window.valcomp.checkUpdate().then((update) => {
   if (!update?.available) return;
   byId("update-message").textContent = `Instalado ${update.currentVersion}; disponível ${update.latestVersion}.`;
   byId("update-banner").hidden = false;
+});
+window.valcomp.version().then((version) => {
+  byId("app-version").textContent = version || "2";
 });
 
 setInterval(updateQueueClock, 1000);

@@ -1,6 +1,6 @@
 {
   "name": "valcomp-companion",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Companion Windows persistente do Valcomp para vínculo Riot e recursos ao vivo.",
   "main": "src/main.js",
   "author": "Valcomp",
