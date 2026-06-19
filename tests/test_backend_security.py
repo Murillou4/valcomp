@@ -108,6 +108,76 @@ def test_bad_claims_from_riot_becomes_relink_required() -> None:
     asyncio.run(run())
 
 
+def test_missing_riot_client_version_is_resolved_before_private_request() -> None:
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.host or "", request.headers.get("x-riot-clientversion", "")))
+        if request.url.host == "valorant-api.com":
+            return httpx.Response(
+                200,
+                json={"data": {"riotClientVersion": "release-current-shipping-1-2"}},
+            )
+        return httpx.Response(200, json={"Version": 1})
+
+    async def run() -> None:
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = RiotRemoteClient(BackendSettings(app_secret_key="unit-test-secret"), client=http)
+        session = RiotSession(
+            access_token="access",
+            entitlement_token="entitlement",
+            puuid="player",
+            region="br",
+            shard="na",
+            client_version="",
+            client_platform="platform",
+        )
+
+        assert await client.mmr(session) == {"Version": 1}
+        assert seen == [
+            ("valorant-api.com", ""),
+            ("pd.na.a.pvp.net", "release-current-shipping-1-2"),
+        ]
+        await http.aclose()
+
+    asyncio.run(run())
+
+
+def test_invalid_headers_refreshes_version_and_retries_once() -> None:
+    private_versions: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "valorant-api.com":
+            return httpx.Response(
+                200,
+                json={"data": {"riotClientVersion": "release-current-shipping-1-2"}},
+            )
+        version = request.headers.get("x-riot-clientversion", "")
+        private_versions.append(version)
+        if version == "release-stale":
+            return httpx.Response(400, json={"errorCode": "INVALID_HEADERS"})
+        return httpx.Response(200, json={"Version": 1})
+
+    async def run() -> None:
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = RiotRemoteClient(BackendSettings(app_secret_key="unit-test-secret"), client=http)
+        session = RiotSession(
+            access_token="access",
+            entitlement_token="entitlement",
+            puuid="player",
+            region="br",
+            shard="na",
+            client_version="release-stale",
+            client_platform="platform",
+        )
+
+        assert await client.mmr(session) == {"Version": 1}
+        assert private_versions == ["release-stale", "release-current-shipping-1-2"]
+        await http.aclose()
+
+    asyncio.run(run())
+
+
 def test_mobile_web_login_prefers_redirect_access_token_before_ssid_reauth() -> None:
     seen: list[tuple[str, str, str]] = []
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -337,6 +337,8 @@ class RiotRemoteClient:
             trust_env=False,
             headers={"User-Agent": ""},
         )
+        self._resolved_client_version = ""
+        self._client_version_refresh_after: datetime | None = None
 
     def headers(self, session: RiotSession, *, include_client_version: bool = True) -> dict[str, str]:
         headers = {
@@ -361,6 +363,8 @@ class RiotRemoteClient:
         params: dict[str, Any] | None = None,
         allow_empty: bool = False,
     ) -> Any:
+        if not session.client_version:
+            await self._refresh_client_version(session)
         response = await self.client.request(
             method,
             url,
@@ -369,6 +373,16 @@ class RiotRemoteClient:
             params=params,
         )
         error_code = riot_error_code(response)
+        if error_code == "INVALID_HEADERS":
+            await self._refresh_client_version(session, force=True)
+            response = await self.client.request(
+                method,
+                url,
+                headers=self.headers(session),
+                json=json_body,
+                params=params,
+            )
+            error_code = riot_error_code(response)
         if response.status_code in {401, 403} or error_code == "BAD_CLAIMS":
             raise RelinkRequiredError(
                 "Sua sessão Riot expirou. Abra o companion no PC para vincular novamente."
@@ -384,6 +398,38 @@ class RiotRemoteClient:
             return response.json()
         except json.JSONDecodeError as exc:
             raise RiotRequestError("Riot response was not JSON.") from exc
+
+    async def _refresh_client_version(
+        self, session: RiotSession, *, force: bool = False
+    ) -> None:
+        now = datetime.now(UTC)
+        if (
+            not force
+            and self._resolved_client_version
+            and self._client_version_refresh_after is not None
+            and now < self._client_version_refresh_after
+        ):
+            session.client_version = self._resolved_client_version
+            return
+
+        try:
+            response = await self.client.get("https://valorant-api.com/v1/version")
+            response.raise_for_status()
+            payload = response.json()
+            data = payload.get("data", {}) if isinstance(payload, dict) else {}
+            version = str(data.get("riotClientVersion", "")).strip()
+        except (httpx.HTTPError, json.JSONDecodeError, TypeError, ValueError):
+            version = ""
+
+        if not version:
+            version = (session.client_version or self.settings.default_client_version).strip()
+        if not version:
+            raise RiotRequestError("Could not determine the current Riot client version.")
+
+        version = version.replace("shipping-shipping-", "shipping-")
+        self._resolved_client_version = version
+        self._client_version_refresh_after = now + timedelta(minutes=30)
+        session.client_version = version
 
     async def storefront(self, session: RiotSession) -> dict[str, Any]:
         base = f"https://pd.{session.shard}.a.pvp.net"
