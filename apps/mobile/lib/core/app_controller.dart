@@ -30,7 +30,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   final PushService _pushService;
   late final LiveService _liveService;
   Timer? _riotSessionTimer;
+  Timer? _updateTimer;
   bool _sessionCheckInFlight = false;
+  bool _updateCheckInFlight = false;
   bool _riotRecoveryInFlight = false;
   bool _appInForeground = true;
 
@@ -86,6 +88,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> bootstrap() async {
     await api.restoreSession();
     unawaited(checkForUpdate());
+    _updateTimer = Timer.periodic(const Duration(minutes: 15), (_) {
+      unawaited(checkForUpdate());
+    });
     if (api.hasSession) {
       try {
         await api.post('/auth/session/verify');
@@ -663,8 +668,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> checkForUpdate() async {
+    if (_updateCheckInFlight) return;
+    _updateCheckInFlight = true;
     try {
-      updateInfo = await UpdateService().checkMobileUpdate();
+      final next = await UpdateService().checkMobileUpdate();
+      updateInfo = next;
       notifyListeners();
     } on Object catch (error) {
       await DiagnosticLog.instance.record(
@@ -673,6 +681,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         message: 'Falha ao consultar versão publicada.',
         context: {'error': error.toString()},
       );
+    } finally {
+      _updateCheckInFlight = false;
     }
   }
 
@@ -792,6 +802,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _appInForeground = state == AppLifecycleState.resumed;
     _syncRiotSessionMonitor();
     if (_appInForeground) {
+      unawaited(checkForUpdate());
       unawaited(checkRiotSession());
       if (authenticated) unawaited(_startLive());
     }
@@ -815,6 +826,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _riotSessionTimer?.cancel();
+    _updateTimer?.cancel();
     api.onRiotRelinkRequired = null;
     unawaited(_liveService.stop());
     super.dispose();

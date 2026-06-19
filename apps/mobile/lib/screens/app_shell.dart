@@ -3,13 +3,21 @@ import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../widgets/bottom_nav.dart';
+import '../widgets/update_banner.dart';
 import 'home_screen.dart';
 import 'live_screen.dart';
 import 'stats_screen.dart';
 import 'store_screen.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key});
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  String _promptedVersion = '';
 
   static const _pages = [
     StoreScreen(key: ValueKey('store')),
@@ -21,6 +29,7 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppController>();
+    _scheduleUpdatePrompt(state);
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Stack(
@@ -56,5 +65,14 @@ class AppShell extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _scheduleUpdatePrompt(AppController state) {
+    final info = state.updateInfo;
+    if (info == null || info.latestLabel == _promptedVersion) return;
+    _promptedVersion = info.latestLabel;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) showUpdatePrompt(context, info);
+    });
   }
 }

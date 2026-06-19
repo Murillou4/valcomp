@@ -17,7 +17,7 @@
 - Live Companion: bandeja persistente, WebSockets autenticados e pagina Partida
   no Android para lobby, fila, pre-game e partida.
 - Renovacao silenciosa: o Companion 2.0.1 atualiza a sessao Riot criptografada
-  no backend e o mobile 1.3.1 recarrega rank, loja e historico automaticamente.
+  no backend e o mobile 1.3.2 recarrega rank, loja e historico automaticamente.
 - Pagina publica para GitHub Pages: `docs/index.html`.
 - O app mobile nao deve depender de `dev:mobile-user` em producao.
 

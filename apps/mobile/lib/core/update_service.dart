@@ -5,6 +5,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 const defaultDownloadManifestUrl =
     'https://murillou4.github.io/valcomp/downloads/manifest.json';
+const defaultFallbackManifestUrl =
+    'https://raw.githubusercontent.com/Murillou4/valcomp/main/docs/downloads/manifest.json';
+
+typedef PackageInfoLoader = Future<PackageInfo> Function();
 
 class UpdateInfo {
   const UpdateInfo({
@@ -32,25 +36,29 @@ class UpdateInfo {
 class UpdateService {
   UpdateService({
     http.Client? client,
+    PackageInfoLoader? packageInfoLoader,
+    List<String>? fallbackManifestUrls,
     String manifestUrl = const String.fromEnvironment(
       'DOWNLOAD_MANIFEST_URL',
       defaultValue: defaultDownloadManifestUrl,
     ),
   }) : _client = client ?? http.Client(),
+       _packageInfoLoader = packageInfoLoader ?? PackageInfo.fromPlatform,
+       fallbackManifestUrls =
+           fallbackManifestUrls ?? const [defaultFallbackManifestUrl],
        manifestUrl = manifestUrl.trim();
 
   final http.Client _client;
+  final PackageInfoLoader _packageInfoLoader;
   final String manifestUrl;
+  final List<String> fallbackManifestUrls;
 
   Future<UpdateInfo?> checkMobileUpdate() async {
     if (manifestUrl.isEmpty) return null;
-    final installed = await PackageInfo.fromPlatform();
-    final response = await _client
-        .get(Uri.parse(manifestUrl), headers: {'Accept': 'application/json'})
-        .timeout(const Duration(seconds: 5));
-    if (response.statusCode < 200 || response.statusCode >= 300) return null;
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map) return null;
+    final installed = await _packageInfoLoader();
+    final manifest = await _fetchManifest();
+    if (manifest == null) return null;
+    final (decoded, sourceUri) = manifest;
     final mobile = decoded['mobile'];
     if (mobile is! Map) return null;
     final latestVersion = mobile['version']?.toString() ?? '';
@@ -70,17 +78,58 @@ class UpdateService {
       currentBuild: currentBuild,
       latestVersion: latestVersion,
       latestBuild: latestBuild,
-      downloadUrl: _downloadUrl(mobile['file']?.toString() ?? ''),
+      downloadUrl: _downloadUrl(mobile['file']?.toString() ?? '', sourceUri),
     );
   }
 
-  String _downloadUrl(String file) {
+  Future<(Map<dynamic, dynamic>, Uri)?> _fetchManifest() async {
+    final candidates = <String>{manifestUrl, ...fallbackManifestUrls};
+    Object? lastError;
+    for (final candidate in candidates) {
+      if (candidate.trim().isEmpty) continue;
+      final original = Uri.parse(candidate.trim());
+      final uri = original.replace(
+        queryParameters: {
+          ...original.queryParameters,
+          '_valcomp_update': DateTime.now().millisecondsSinceEpoch.toString(),
+        },
+      );
+      try {
+        final response = await _client
+            .get(
+              uri,
+              headers: const {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache, no-store, max-age=0',
+                'Pragma': 'no-cache',
+              },
+            )
+            .timeout(const Duration(seconds: 8));
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          lastError = 'HTTP ${response.statusCode}';
+          continue;
+        }
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['mobile'] is Map) {
+          return (decoded, original);
+        }
+        lastError = const FormatException('Manifesto de atualização inválido.');
+      } on Object catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError != null) throw lastError;
+    return null;
+  }
+
+  String _downloadUrl(String file, Uri sourceManifest) {
     if (file.startsWith('http://') || file.startsWith('https://')) {
       return file;
     }
-    final manifest = Uri.parse(manifestUrl);
-    if (file.isEmpty) return manifest.replace(path: '/valcomp/').toString();
-    return manifest.resolve(file).toString();
+    if (file.isEmpty) {
+      return Uri.parse(manifestUrl).resolve('/valcomp/').toString();
+    }
+    return sourceManifest.resolve(file).toString();
   }
 }
 
