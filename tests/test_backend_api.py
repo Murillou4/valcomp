@@ -47,6 +47,12 @@ class FakeRiotAuth:
         *,
         access_token: str,
         id_token: str = "",
+        entitlement_token: str = "",
+        puuid: str = "",
+        region: str = "",
+        shard: str = "",
+        game_name: str = "",
+        tag_line: str = "",
         ssid: str = "",
         cookies: dict[str, str] | None = None,
         client_version: str = "",
@@ -56,13 +62,13 @@ class FakeRiotAuth:
             cookies=cookies or {},
             access_token=access_token,
             id_token=id_token,
-            entitlement_token="web-entitlement",
-            puuid="puuid-web",
-            region="br",
-            shard="na",
+            entitlement_token=entitlement_token or "web-entitlement",
+            puuid=puuid or "puuid-web",
+            region=region or "br",
+            shard=shard or "na",
             client_version=client_version or "release-test",
-            game_name="Mobile",
-            tag_line="BR2",
+            game_name=game_name or "Mobile",
+            tag_line=tag_line or "BR2",
         )
 
 
@@ -505,18 +511,25 @@ def test_mobile_riot_login_complete_links_current_user() -> None:
         json={
             "access_token": "web-access-token-value-123456",
             "id_token": "web-id-token",
+            "entitlement_token": "web-entitlement-from-phone",
+            "puuid": "puuid-phone",
+            "region": "br",
+            "shard": "na",
+            "game_name": "Phone",
+            "tag_line": "BR3",
             "ssid": "web-ssid",
             "cookies": {"ssid": "web-ssid", "clid": "cookie-value"},
         },
     )
 
     assert complete.status_code == 200
-    assert complete.json()["riot_account"]["game_name"] == "Mobile"
+    assert complete.json()["riot_account"]["game_name"] == "Phone"
     me = client.get("/me", headers=auth_headers())
-    assert me.json()["riot_account"]["puuid"] == "puuid-web"
+    assert me.json()["riot_account"]["puuid"] == "puuid-phone"
     record = asyncio.run(repo.get_riot_credentials("mobile-user"))
     assert record is not None
     stored = CryptoService(settings.app_secret_key).decrypt_json(record.encrypted_payload)
+    assert stored["entitlement_token"] == "web-entitlement-from-phone"
     assert stored["ssid"] == "web-ssid"
     assert stored["cookies"]["ssid"] == "web-ssid"
 

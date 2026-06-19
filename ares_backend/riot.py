@@ -129,6 +129,12 @@ class RiotAuthService:
         *,
         access_token: str,
         id_token: str = "",
+        entitlement_token: str = "",
+        puuid: str = "",
+        region: str = "",
+        shard: str = "",
+        game_name: str = "",
+        tag_line: str = "",
         ssid: str = "",
         cookies: dict[str, str] | None = None,
         client_version: str = "",
@@ -141,6 +147,22 @@ class RiotAuthService:
         clean_ssid = ssid or cookie_map.get("ssid", "")
         if clean_ssid:
             cookie_map["ssid"] = clean_ssid
+
+        supplied_payload = self._payload_from_supplied_web_session(
+            access_token=access_token,
+            id_token=id_token,
+            entitlement_token=entitlement_token,
+            puuid=puuid,
+            region=region,
+            shard=shard,
+            game_name=game_name,
+            tag_line=tag_line,
+            ssid=clean_ssid,
+            cookies=cookie_map,
+            client_version=client_version,
+        )
+        if supplied_payload is not None:
+            return supplied_payload
 
         if access_token_needs_refresh(access_token, leeway_seconds=300):
             if not clean_ssid:
@@ -159,6 +181,41 @@ class RiotAuthService:
             )
         except RelinkRequiredError:
             raise
+
+    def _payload_from_supplied_web_session(
+        self,
+        *,
+        access_token: str,
+        id_token: str,
+        entitlement_token: str,
+        puuid: str,
+        region: str,
+        shard: str,
+        game_name: str,
+        tag_line: str,
+        ssid: str,
+        cookies: dict[str, str],
+        client_version: str,
+    ) -> RiotCredentialPayload | None:
+        clean_region = region.strip().lower()
+        clean_shard = (shard.strip().lower() or REGION_TO_SHARD.get(clean_region, ""))
+        if not (entitlement_token and puuid and clean_region and clean_shard):
+            return None
+        if access_token_needs_refresh(access_token, leeway_seconds=300):
+            return None
+        return RiotCredentialPayload(
+            ssid=ssid,
+            cookies=cookies,
+            access_token=access_token,
+            id_token=id_token,
+            entitlement_token=entitlement_token,
+            puuid=puuid,
+            region=clean_region,
+            shard=clean_shard,
+            client_version=client_version or self.settings.default_client_version,
+            game_name=game_name,
+            tag_line=tag_line,
+        )
 
     async def _payload_from_web_tokens(
         self,

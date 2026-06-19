@@ -487,6 +487,12 @@ class AppController extends ChangeNotifier {
   Future<String> completeMobileRiotLogin({
     required String accessToken,
     required String idToken,
+    required String entitlementToken,
+    required String puuid,
+    required String region,
+    required String shard,
+    required String gameName,
+    required String tagLine,
     required String ssid,
     required Map<String, String> cookies,
   }) async {
@@ -506,6 +512,12 @@ class AppController extends ChangeNotifier {
         body: {
           'access_token': accessToken,
           'id_token': idToken,
+          'entitlement_token': entitlementToken,
+          'puuid': puuid,
+          'region': region,
+          'shard': shard,
+          'game_name': gameName,
+          'tag_line': tagLine,
           'ssid': ssid,
           'cookies': cookies,
         },

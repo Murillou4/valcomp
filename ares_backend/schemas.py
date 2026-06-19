@@ -110,6 +110,12 @@ class LinkCompleteRequest(BaseModel):
 class RiotMobileLoginCompleteRequest(BaseModel):
     access_token: str = Field(min_length=20, max_length=8192)
     id_token: str = Field(default="", max_length=8192)
+    entitlement_token: str = Field(default="", max_length=8192)
+    puuid: str = Field(default="", max_length=120)
+    region: str = Field(default="", max_length=20)
+    shard: str = Field(default="", max_length=20)
+    game_name: str = Field(default="", max_length=80)
+    tag_line: str = Field(default="", max_length=20)
     ssid: str = Field(default="", max_length=4096)
     cookies: dict[str, str] = Field(default_factory=dict)
     client_version: str = Field(default="", max_length=120)

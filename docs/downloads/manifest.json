@@ -5,11 +5,11 @@
     "name": "Valcomp Mobile APK",
     "framework": "Flutter 3.41.9",
     "package": "com.cda2.valcomp",
-    "version": "1.1.8",
-    "build": 12,
+    "version": "1.1.9",
+    "build": 13,
     "file": "valcomp-mobile.apk",
     "size_bytes": 62926800,
-    "sha256": "772AC2C284438BF41AC4D7203B965C822EC835B6FA13AFF5E566B5C305FA2C36",
+    "sha256": "81CE1DB047854FD7257F4946EFCC06774A12B11EB6041DA5F2874CFB3C9ACAF0",
     "signer_sha256": "C9702855214494288B8356C18077E00A29313C09D930894DCFDCA34B7E5DA11F"
   },
   "desktop": {

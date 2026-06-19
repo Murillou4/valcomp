@@ -50,6 +50,12 @@ void main() {
     );
   });
 
+  test('Riot mobile login maps Valorant regions to shards', () {
+    expect(riotShardForRegionForTest('br'), 'na');
+    expect(riotShardForRegionForTest('latam'), 'na');
+    expect(riotShardForRegionForTest('eu'), 'eu');
+  });
+
   test('update version comparator honors version and build', () {
     expect(isNewerVersionForTest('1.1.6', 1, '1.1.5', 99), isTrue);
     expect(isNewerVersionForTest('1.1.5', 10, '1.1.5', 9), isTrue);

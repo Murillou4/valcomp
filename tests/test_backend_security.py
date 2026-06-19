@@ -169,6 +169,46 @@ def test_mobile_web_login_prefers_redirect_access_token_before_ssid_reauth() -> 
     asyncio.run(run())
 
 
+def test_mobile_web_login_uses_supplied_hydrated_payload_without_riot_fetch() -> None:
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(f"{request.method} {request.url}")
+        return httpx.Response(500, json={"error": "unexpected request"})
+
+    async def run() -> None:
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        service = RiotAuthService(
+            BackendSettings(app_secret_key="unit-test-secret"),
+            CryptoService("unit-test-secret"),
+            client=http,
+        )
+
+        payload = await service.payload_from_web_login(
+            access_token="direct-access-token",
+            id_token="direct-id-token",
+            entitlement_token="phone-entitlement",
+            puuid="phone-puuid",
+            region="br",
+            game_name="Phone",
+            tag_line="BR3",
+            ssid="ssid-cookie",
+            cookies={"ssid": "ssid-cookie"},
+            client_version="release-test",
+        )
+
+        assert payload.access_token == "direct-access-token"
+        assert payload.entitlement_token == "phone-entitlement"
+        assert payload.puuid == "phone-puuid"
+        assert payload.region == "br"
+        assert payload.shard == "na"
+        assert payload.game_name == "Phone"
+        assert seen == []
+        await http.aclose()
+
+    asyncio.run(run())
+
+
 def test_mobile_web_login_refreshes_expired_redirect_token_with_ssid() -> None:
     expired_token = jwt.encode(
         {"exp": datetime.now(UTC) - timedelta(minutes=1)},

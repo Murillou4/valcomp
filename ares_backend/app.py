@@ -425,6 +425,12 @@ def create_app(
         riot_payload = await svc.riot_auth.payload_from_web_login(
             access_token=payload.access_token,
             id_token=payload.id_token,
+            entitlement_token=payload.entitlement_token,
+            puuid=payload.puuid,
+            region=payload.region,
+            shard=payload.shard,
+            game_name=payload.game_name,
+            tag_line=payload.tag_line,
             ssid=payload.ssid,
             cookies=payload.cookies,
             client_version=payload.client_version,

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../core/api_client.dart';
 import '../core/app_controller.dart';
+import '../core/riot_mobile_auth.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 
@@ -173,6 +174,10 @@ class _RiotMobileLoginScreenState extends State<RiotMobileLoginScreen> {
       _details = '';
     });
     try {
+      final riotSession = await fetchRiotMobileSession(
+        accessToken: tokens.accessToken,
+        idToken: tokens.idToken,
+      );
       final cookies = await _riotCookies();
       final ssid = cookies['ssid'] ?? '';
       if (ssid.isEmpty) {
@@ -184,6 +189,12 @@ class _RiotMobileLoginScreenState extends State<RiotMobileLoginScreen> {
       final riotId = await state.completeMobileRiotLogin(
         accessToken: tokens.accessToken,
         idToken: tokens.idToken,
+        entitlementToken: riotSession.entitlementToken,
+        puuid: riotSession.puuid,
+        region: riotSession.region,
+        shard: riotSession.shard,
+        gameName: riotSession.gameName,
+        tagLine: riotSession.tagLine,
         ssid: ssid,
         cookies: cookies,
       );
@@ -237,6 +248,8 @@ Map<String, String>? riotTokenParametersFromUrlForTest(String url) {
   if (tokens == null) return null;
   return {'access_token': tokens.accessToken, 'id_token': tokens.idToken};
 }
+
+String riotShardForRegionForTest(String region) => riotShardForRegion(region);
 
 String riotLoginUrlForTest() =>
     _RiotMobileLoginScreenState._loginUri.toString();
