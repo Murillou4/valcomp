@@ -9,6 +9,7 @@ import 'package:valcomp/preview_main.dart';
 import 'package:valcomp/screens/home_screen.dart';
 import 'package:valcomp/screens/item_details_screen.dart';
 import 'package:valcomp/screens/link_screen.dart';
+import 'package:valcomp/screens/live_screen.dart';
 import 'package:valcomp/screens/wishlist_screen.dart';
 import 'package:valcomp/widgets/store_item_card.dart';
 
@@ -74,6 +75,17 @@ void main() {
     expect(find.text('Entrar pela Riot neste celular'), findsOneWidget);
     expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
     expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Live offline setup fits a compact Android viewport', (
+    tester,
+  ) async {
+    await pumpScreen(tester, const LiveScreen(), size: const Size(360, 720));
+
+    expect(find.text('Companion offline'), findsWidgets);
+    expect(find.text('Gerar código do Companion'), findsOneWidget);
+    expect(find.text('Som de partida encontrada'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

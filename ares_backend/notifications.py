@@ -63,7 +63,13 @@ class FirebasePushClient:
                         channel_id=str(payload.get("channel_id") or "skin_alerts"),
                         click_action="FLUTTER_NOTIFICATION_CLICK",
                         icon="ic_notification",
-                        sound="default",
+                        sound=(
+                            str(payload.get("sound"))
+                            if payload.get("sound")
+                            else None
+                            if "sound" in payload
+                            else "default"
+                        ),
                     ),
                 ),
             )
@@ -196,6 +202,66 @@ class StoreAlertService:
         lock = self._relink_notification_locks.setdefault(user_id, asyncio.Lock())
         async with lock:
             return await self._notify_riot_relink_required(user_id)
+
+    async def notify_match_found(self, user_id: str, pregame_id: str, map_name: str = "") -> int:
+        if not pregame_id:
+            return 0
+        delivery_key = hashlib.sha256(
+            f"{user_id}:match_found:{pregame_id}".encode("utf-8")
+        ).hexdigest()
+        if await self.repo.get_notification_delivery(delivery_key):
+            return 0
+        devices = [
+            device
+            for device in await self.repo.list_push_devices(user_id)
+            if device.enabled and device.provider == "fcm" and device.push_token
+        ]
+        if not devices:
+            return 0
+        profile = await self.repo.get_profile(user_id)
+        loud = bool(profile is None or profile.preferences.get("match_found_sound", True))
+        detail = f"Mapa: {map_name}." if map_name else "Abra o VALORANT para continuar."
+        results = await self.push.send(
+            [
+                {
+                    "token": device.push_token,
+                    "title": "Partida encontrada",
+                    "body": detail,
+                    "channel_id": "match_found_loud_v1" if loud else "match_found_quiet_v1",
+                    "sound": "match_found" if loud else "",
+                    "data": {
+                        "type": "match_found",
+                        "route": "live",
+                        "pregameId": pregame_id,
+                    },
+                }
+                for device in devices
+            ]
+        )
+        ticket_ids = [
+            str(result.get("id"))
+            for result in results
+            if result.get("status") == "ok" and result.get("id")
+        ]
+        failures = [
+            str(result.get("message") or "FCM delivery failed.")
+            for result in results
+            if result.get("status") != "ok"
+        ]
+        await self.repo.upsert_notification_delivery(
+            NotificationDelivery(
+                delivery_key=delivery_key,
+                user_id=user_id,
+                item_id=pregame_id,
+                item_name="Partida encontrada",
+                source="match_found",
+                status="sent" if ticket_ids else "failed",
+                ticket_ids=ticket_ids,
+                error="; ".join(failures)[:800],
+                sent_at=datetime.now(UTC),
+            )
+        )
+        return len(ticket_ids)
 
     async def _notify_riot_relink_required(self, user_id: str) -> int:
         credentials = await self.repo.get_riot_credentials(user_id)

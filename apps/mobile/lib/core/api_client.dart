@@ -65,6 +65,7 @@ class ApiClient {
   int? _expiresAt;
 
   bool get hasSession => _accessToken.isNotEmpty;
+  String get accessToken => _accessToken;
 
   Future<void> restoreSession() async {
     _accessToken = await _storage.read(key: 'access_token') ?? '';

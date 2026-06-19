@@ -3,16 +3,19 @@ class Profile {
     required this.userId,
     required this.displayName,
     required this.avatarUrl,
+    this.preferences = const {},
   });
 
   final String userId;
   final String displayName;
   final String avatarUrl;
+  final Map<String, dynamic> preferences;
 
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
     userId: _string(json['user_id']),
     displayName: _string(json['display_name']),
     avatarUrl: _string(json['avatar_url']),
+    preferences: _map(json['preferences']),
   );
 }
 

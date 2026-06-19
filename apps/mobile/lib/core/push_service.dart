@@ -26,6 +26,8 @@ class PushService {
   ApiClient? _api;
   VoidCallback? _onOpenStore;
   VoidCallback? _onRiotRelinkRequired;
+  VoidCallback? _onOpenLive;
+  bool _matchFoundSoundEnabled = true;
 
   static bool get configured =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -50,6 +52,8 @@ class PushService {
     ApiClient api, {
     VoidCallback? onOpenStore,
     VoidCallback? onRiotRelinkRequired,
+    VoidCallback? onOpenLive,
+    bool matchFoundSoundEnabled = true,
   }) async {
     if (kIsWeb ||
         defaultTargetPlatform != TargetPlatform.android ||
@@ -59,6 +63,8 @@ class PushService {
     _api = api;
     _onOpenStore = onOpenStore ?? _onOpenStore;
     _onRiotRelinkRequired = onRiotRelinkRequired ?? _onRiotRelinkRequired;
+    _onOpenLive = onOpenLive ?? _onOpenLive;
+    _matchFoundSoundEnabled = matchFoundSoundEnabled;
     if (!_initialized) {
       const android = AndroidInitializationSettings('ic_notification');
       await _notifications.initialize(
@@ -87,6 +93,36 @@ class PushService {
             AndroidFlutterLocalNotificationsPlugin
           >()
           ?.createNotificationChannel(accountChannel);
+      const matchChannel = AndroidNotificationChannel(
+        'match_found_loud_v1',
+        'Partida encontrada',
+        description: 'Alerta sonoro quando o VALORANT encontra uma partida.',
+        importance: Importance.max,
+        bypassDnd: false,
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound('match_found'),
+        enableVibration: true,
+        audioAttributesUsage: AudioAttributesUsage.notificationEvent,
+      );
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(matchChannel);
+      const quietMatchChannel = AndroidNotificationChannel(
+        'match_found_quiet_v1',
+        'Partida encontrada sem som',
+        description: 'Alerta visual e vibratório de partida encontrada.',
+        importance: Importance.high,
+        bypassDnd: false,
+        playSound: false,
+        enableVibration: true,
+      );
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(quietMatchChannel);
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
       _initialized = true;
     }
@@ -141,20 +177,38 @@ class PushService {
     _handleNotificationData(message.data);
     final relinkRequired =
         message.data['type']?.toString() == 'riot_relink_required';
+    final matchFound = message.data['type']?.toString() == 'match_found';
+    final channelId = matchFound
+        ? (_matchFoundSoundEnabled
+              ? 'match_found_loud_v1'
+              : 'match_found_quiet_v1')
+        : relinkRequired
+        ? 'account_status'
+        : 'skin_alerts';
     await _notifications.show(
       id: message.hashCode,
       title: notification.title,
       body: notification.body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          relinkRequired ? 'account_status' : 'skin_alerts',
-          relinkRequired ? 'Status da conta' : 'Alertas de skins',
-          channelDescription: relinkRequired
+          channelId,
+          matchFound
+              ? 'Partida encontrada'
+              : relinkRequired
+              ? 'Status da conta'
+              : 'Alertas de skins',
+          channelDescription: matchFound
+              ? 'Alerta quando o VALORANT encontra uma partida.'
+              : relinkRequired
               ? 'Avisa quando é necessário entrar novamente na Riot.'
               : 'Avisa quando uma skin desejada aparece na sua loja.',
-          importance: Importance.high,
-          priority: Priority.high,
+          importance: matchFound ? Importance.max : Importance.high,
+          priority: matchFound ? Priority.max : Priority.high,
           icon: 'ic_notification',
+          playSound: matchFound ? _matchFoundSoundEnabled : true,
+          sound: matchFound && _matchFoundSoundEnabled
+              ? const RawResourceAndroidNotificationSound('match_found')
+              : null,
         ),
       ),
       payload: jsonEncode(message.data),
@@ -185,6 +239,8 @@ class PushService {
     final route = data['route']?.toString() ?? data['screen']?.toString() ?? '';
     if (type == 'skin_store_match' || route == 'store') {
       _onOpenStore?.call();
+    } else if (type == 'match_found' || route == 'live') {
+      _onOpenLive?.call();
     } else if (type == 'riot_relink_required' || route == 'riot_setup') {
       _onRiotRelinkRequired?.call();
     }

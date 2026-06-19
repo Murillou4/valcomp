@@ -544,6 +544,8 @@ def test_mobile_riot_login_complete_links_current_user() -> None:
 
 def test_riot_session_status_notifies_once_and_requires_relink() -> None:
     client, repo, settings, push = make_client(riot_client=ExpiredRiotClient())
+    settings.riot_relink_notification_grace_seconds = 0
+    settings.riot_companion_refresh_grace_seconds = 0
     seed_linked_user(repo, settings)
     client.post(
         "/notifications/devices",
@@ -565,6 +567,26 @@ def test_riot_session_status_notifies_once_and_requires_relink() -> None:
     assert push.messages[0]["channel_id"] == "account_status"
     assert push.messages[0]["data"]["type"] == "riot_relink_required"
     assert push.messages[0]["data"]["route"] == "riot_setup"
+
+
+def test_riot_session_status_does_not_notify_during_refresh_grace() -> None:
+    client, repo, settings, push = make_client(riot_client=ExpiredRiotClient())
+    seed_linked_user(repo, settings)
+    client.post(
+        "/notifications/devices",
+        headers=auth_headers(),
+        json={
+            "push_token": "fcm-grace-token-1234567890123456789012345",
+            "provider": "fcm",
+            "platform": "android",
+        },
+    )
+
+    response = client.get("/riot/session/status", headers=auth_headers())
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "relink_required"
+    assert push.messages == []
 
 
 def test_link_complete_rejects_expired_riot_access_token() -> None:

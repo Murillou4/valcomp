@@ -42,18 +42,27 @@ class ValcompBottomNav extends StatelessWidget {
               children: [
                 _NavItem(
                   asset: 'assets/icons/shop.svg',
+                  label: 'Loja',
                   selected: index == 0,
                   onTap: () => onChanged(0),
                 ),
                 _NavItem(
                   asset: 'assets/icons/home.svg',
+                  label: 'Início',
                   selected: index == 1,
                   onTap: () => onChanged(1),
                 ),
                 _NavItem(
                   asset: 'assets/icons/stats.svg',
+                  label: 'Estatísticas',
                   selected: index == 2,
                   onTap: () => onChanged(2),
+                ),
+                _NavItem(
+                  icon: Icons.sports_esports_outlined,
+                  label: 'Partida',
+                  selected: index == 3,
+                  onTap: () => onChanged(3),
                 ),
               ],
             ),
@@ -66,12 +75,16 @@ class ValcompBottomNav extends StatelessWidget {
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
-    required this.asset,
+    this.asset,
+    this.icon,
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final String asset;
+  final String? asset;
+  final IconData? icon;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
@@ -80,6 +93,7 @@ class _NavItem extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
+      label: label,
       child: InkWell(
         onTap: () {
           HapticFeedback.selectionClick();
@@ -100,15 +114,17 @@ class _NavItem extends StatelessWidget {
             duration: const Duration(milliseconds: 240),
             scale: selected ? 1 : 0.84,
             curve: Curves.easeOutBack,
-            child: SvgPicture.asset(
-              asset,
-              width: 31,
-              height: 31,
-              colorFilter: const ColorFilter.mode(
-                Colors.white,
-                BlendMode.srcIn,
-              ),
-            ),
+            child: icon != null
+                ? Icon(icon, size: 31, color: Colors.white)
+                : SvgPicture.asset(
+                    asset!,
+                    width: 31,
+                    height: 31,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                  ),
           ),
         ),
       ),

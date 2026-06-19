@@ -13,6 +13,7 @@ from ares_backend.riot import (
     RiotSession,
     access_token_needs_refresh,
 )
+from ares_backend.schemas import RiotCredentialPayload
 from ares_backend.security import CryptoService, redact_secret
 from ares_backend.settings import BackendSettings
 
@@ -340,6 +341,63 @@ def test_mobile_web_login_refreshes_expired_redirect_token_with_ssid() -> None:
         assert payload.entitlement_token == "ssid-entitlement"
         assert payload.puuid == "ssid-puuid"
         assert payload.game_name == "Fallback"
+        await http.aclose()
+
+    asyncio.run(run())
+
+
+def test_riot_reauth_accepts_json_redirect_and_rotates_cookies() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":
+            assert "ssid=old-ssid" in request.headers.get("cookie", "")
+            return httpx.Response(
+                200,
+                json={
+                    "response": {
+                        "parameters": {
+                            "uri": (
+                                "http://localhost/redirect#access_token=json-access-token"
+                                "&id_token=json-id-token"
+                            )
+                        }
+                    }
+                },
+                headers={"set-cookie": "ssid=rotated-ssid; Path=/; HttpOnly"},
+            )
+        if request.url.host == "entitlements.auth.riotgames.com":
+            return httpx.Response(200, json={"entitlements_token": "json-entitlement"})
+        if request.url.host == "auth.riotgames.com" and request.url.path == "/userinfo":
+            return httpx.Response(
+                200,
+                json={"sub": "json-puuid", "acct": {"game_name": "JSON", "tag_line": "BR1"}},
+            )
+        if request.url.host == "riot-geo.pas.si.riotgames.com":
+            return httpx.Response(200, json={"affinities": {"live": "br"}})
+        return httpx.Response(404)
+
+    async def run() -> None:
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        service = RiotAuthService(
+            BackendSettings(app_secret_key="unit-test-secret"),
+            CryptoService("unit-test-secret"),
+            client=http,
+        )
+        payload = await service.refresh_payload(
+            RiotCredentialPayload(
+                ssid="old-ssid",
+                cookies={"ssid": "old-ssid", "clid": "keep-me"},
+                puuid="json-puuid",
+                region="br",
+                shard="na",
+            )
+        )
+        assert payload.access_token == "json-access-token"
+        assert payload.entitlement_token == "json-entitlement"
+        assert payload.ssid == "rotated-ssid"
+        assert payload.cookies == {
+            "ssid": "rotated-ssid",
+            "clid": "keep-me",
+        }
         await http.aclose()
 
     asyncio.run(run())

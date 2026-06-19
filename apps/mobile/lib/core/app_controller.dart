@@ -5,6 +5,8 @@ import 'package:flutter/widgets.dart';
 
 import 'api_client.dart';
 import 'diagnostic_log.dart';
+import 'live_models.dart';
+import 'live_service.dart';
 import 'models.dart';
 import 'push_service.dart';
 import 'update_service.dart';
@@ -15,12 +17,21 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _pushService = pushService {
     WidgetsBinding.instance.addObserver(this);
     this.api.onRiotRelinkRequired = _requireRiotRelink;
+    _liveService = LiveService(
+      this.api,
+      onSnapshot: _handleLiveSnapshot,
+      onCommand: _handleLiveCommand,
+      onConnection: _handleLiveConnection,
+      onRiotSession: _handleRiotSessionRefreshed,
+    );
   }
 
   final ApiClient api;
   final PushService _pushService;
+  late final LiveService _liveService;
   Timer? _riotSessionTimer;
   bool _sessionCheckInFlight = false;
+  bool _riotRecoveryInFlight = false;
   bool _appInForeground = true;
 
   bool booting = true;
@@ -51,6 +62,16 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   String linkCode = '';
   DateTime? linkStartedAt;
   DateTime? linkExpiresAt;
+  LiveSnapshot liveSnapshot = LiveSnapshot.offline();
+  List<CompanionDevice> companionDevices = const [];
+  CompanionPairCode? companionPairCode;
+  LiveCommandResult? liveCommandResult;
+  bool liveConnected = false;
+  bool liveLoading = false;
+  bool matchFoundSoundEnabled = true;
+  String liveConnectionMessage = 'Companion offline';
+  String liveError = '';
+  String selectedAgentId = '';
 
   bool get linked => me?.riotAccount != null && !relinkRequired;
   bool get requiresRiotSetup =>
@@ -70,6 +91,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await api.post('/auth/session/verify');
         authenticated = true;
         await refreshAll(silent: true);
+        unawaited(_startLive());
       } on ApiException {
         if (await api.refreshSession()) {
           authenticated = true;
@@ -108,6 +130,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       }
       authenticated = true;
       await refreshAll(silent: true);
+      unawaited(_startLive());
       unawaited(_registerPush());
       _syncRiotSessionMonitor();
       return null;
@@ -123,6 +146,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> logout() async {
     _riotSessionTimer?.cancel();
+    await _liveService.stop();
     await api.clearSession();
     authenticated = false;
     relinkRequired = false;
@@ -132,6 +156,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     player = null;
     watches = const [];
     deliveries = const [];
+    liveSnapshot = LiveSnapshot.offline();
+    companionDevices = const [];
+    companionPairCode = null;
     notifyListeners();
   }
 
@@ -152,6 +179,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     watchErrorDetails = '';
     try {
       me = MeData.fromJson(await api.get('/me'));
+      matchFoundSoundEnabled =
+          me?.profile.preferences['match_found_sound'] != false;
       relinkRequired = false;
       try {
         await _loadWatchData();
@@ -244,6 +273,158 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (navIndex == index) return;
     navIndex = index;
     notifyListeners();
+    if (index == 3 && authenticated) unawaited(refreshLive());
+  }
+
+  Future<void> _startLive() async {
+    if (!authenticated) return;
+    await Future.wait([_liveService.start(), loadCompanionDevices()]);
+  }
+
+  Future<void> refreshLive() async {
+    if (liveLoading) return;
+    liveLoading = true;
+    liveError = '';
+    notifyListeners();
+    try {
+      await Future.wait([_liveService.refreshState(), loadCompanionDevices()]);
+    } on ApiException catch (exception) {
+      liveError = exception.userMessage;
+    } finally {
+      liveLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadCompanionDevices() async {
+    try {
+      companionDevices = await _liveService.devices();
+      notifyListeners();
+    } on ApiException catch (exception) {
+      liveError = exception.userMessage;
+    }
+  }
+
+  Future<void> generateCompanionPairCode() async {
+    liveLoading = true;
+    liveError = '';
+    notifyListeners();
+    try {
+      companionPairCode = await _liveService.startPairing();
+    } on ApiException catch (exception) {
+      liveError = exception.userMessage;
+    } finally {
+      liveLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> revokeCompanion(String deviceId) async {
+    liveLoading = true;
+    notifyListeners();
+    try {
+      await _liveService.revokeDevice(deviceId);
+      await loadCompanionDevices();
+      await _liveService.refreshState();
+    } on ApiException catch (exception) {
+      liveError = exception.userMessage;
+    } finally {
+      liveLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<LiveCommandResult?> sendLiveCommand(
+    String command, [
+    Map<String, dynamic> payload = const {},
+  ]) async {
+    if (liveLoading) return null;
+    liveLoading = true;
+    liveError = '';
+    notifyListeners();
+    try {
+      final result = await _liveService.command(command, payload);
+      liveCommandResult = result;
+      return result;
+    } on ApiException catch (exception) {
+      liveError = exception.userMessage;
+      return null;
+    } finally {
+      liveLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> selectAgent(String agentId) async {
+    final result = await sendLiveCommand('pregame.select_agent', {
+      'agent_id': agentId,
+    });
+    if (result != null) {
+      selectedAgentId = agentId;
+      notifyListeners();
+    }
+  }
+
+  Future<void> lockSelectedAgent() async {
+    if (selectedAgentId.isEmpty) return;
+    await sendLiveCommand('pregame.lock_agent', {'agent_id': selectedAgentId});
+  }
+
+  Future<void> setMatchFoundSound(bool enabled) async {
+    matchFoundSoundEnabled = enabled;
+    notifyListeners();
+    final preferences = <String, dynamic>{
+      ...?me?.profile.preferences,
+      'match_found_sound': enabled,
+    };
+    try {
+      await api.patch('/me', body: {'preferences': preferences});
+      me = MeData.fromJson(await api.get('/me'));
+      unawaited(_registerPush());
+    } on ApiException catch (exception) {
+      matchFoundSoundEnabled = !enabled;
+      liveError = exception.userMessage;
+      notifyListeners();
+    }
+  }
+
+  void _handleLiveSnapshot(LiveSnapshot snapshot) {
+    if (snapshot.revision < liveSnapshot.revision) return;
+    liveSnapshot = snapshot;
+    if (snapshot.phase != 'pregame' && snapshot.phase != 'match_found') {
+      selectedAgentId = '';
+    }
+    notifyListeners();
+  }
+
+  void _handleLiveCommand(LiveCommandResult command) {
+    liveCommandResult = command;
+    if (command.finished) unawaited(_liveService.refreshState());
+    notifyListeners();
+  }
+
+  void _handleLiveConnection(bool connected, String message) {
+    liveConnected = connected;
+    liveConnectionMessage = message;
+    notifyListeners();
+  }
+
+  void _handleRiotSessionRefreshed() {
+    if (_riotRecoveryInFlight || !authenticated || me?.riotAccount == null) {
+      return;
+    }
+    _riotRecoveryInFlight = true;
+    unawaited(() async {
+      try {
+        await refreshAll(silent: true);
+        if (relinkRequired) {
+          await Future<void>.delayed(const Duration(seconds: 2));
+          await refreshAll(silent: true);
+        }
+      } finally {
+        _riotRecoveryInFlight = false;
+      }
+    }());
   }
 
   Future<void> generateLinkCode() async {
@@ -575,6 +756,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     api,
     onOpenStore: openStoreFromNotification,
     onRiotRelinkRequired: handleRiotRelinkNotification,
+    onOpenLive: openLiveFromNotification,
+    matchFoundSoundEnabled: matchFoundSoundEnabled,
   );
 
   void _requireRiotRelink() {
@@ -608,7 +791,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appInForeground = state == AppLifecycleState.resumed;
     _syncRiotSessionMonitor();
-    if (_appInForeground) unawaited(checkRiotSession());
+    if (_appInForeground) {
+      unawaited(checkRiotSession());
+      if (authenticated) unawaited(_startLive());
+    }
   }
 
   void openStoreFromNotification() {
@@ -619,11 +805,18 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  void openLiveFromNotification() {
+    navIndex = 3;
+    notifyListeners();
+    if (authenticated) unawaited(refreshLive());
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _riotSessionTimer?.cancel();
     api.onRiotRelinkRequired = null;
+    unawaited(_liveService.stop());
     super.dispose();
   }
 }

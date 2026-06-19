@@ -96,6 +96,17 @@ class RiotCredentialPayload(BaseModel):
     tag_line: str = ""
 
 
+class CompanionRiotSessionPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    access_token: str = Field(min_length=20, max_length=8192)
+    entitlement_token: str = Field(min_length=20, max_length=8192)
+    puuid: str = Field(min_length=1, max_length=120)
+    region: str = Field(min_length=1, max_length=20)
+    shard: str = Field(min_length=1, max_length=20)
+    client_version: str = Field(default="", max_length=160)
+
+
 class LinkStartResponse(BaseModel):
     link_code: str
     created_at: datetime
@@ -124,6 +135,139 @@ class RiotMobileLoginCompleteRequest(BaseModel):
 class LinkCompleteResponse(BaseModel):
     linked: bool
     riot_account: RiotAccount
+
+
+LivePhase = Literal[
+    "offline",
+    "client",
+    "lobby",
+    "queue",
+    "match_found",
+    "pregame",
+    "in_game",
+    "postgame",
+    "error",
+]
+LiveCommandStatus = Literal[
+    "queued", "delivered", "succeeded", "rejected", "failed", "expired"
+]
+
+
+class CompanionPairStartResponse(BaseModel):
+    pair_code: str
+    created_at: datetime
+    expires_at: datetime
+
+
+class CompanionPairCompleteRequest(BaseModel):
+    pair_code: str = Field(pattern=r"^\d{6}$")
+    device_name: str = Field(min_length=1, max_length=80)
+    app_version: str = Field(min_length=1, max_length=40)
+    protocol_version: int = Field(ge=1, le=20)
+
+
+class CompanionDevice(BaseModel):
+    device_id: str
+    device_name: str
+    app_version: str
+    protocol_version: int = 1
+    active: bool = True
+    revoked_at: datetime | None = None
+    last_seen_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CompanionDeviceRecord(CompanionDevice):
+    user_id: str
+    secret_hash: str
+
+
+class CompanionPairCompleteResponse(BaseModel):
+    device: CompanionDevice
+    device_secret: str
+    websocket_url: str
+
+
+class LiveSnapshot(BaseModel):
+    user_id: str
+    device_id: str
+    revision: int = Field(ge=0)
+    phase: LivePhase = "offline"
+    state: dict[str, Any] = Field(default_factory=dict)
+    updated_at: datetime
+
+
+LIVE_COMMAND_FIELDS: dict[str, set[str]] = {
+    "party.change_queue": {"queue_id"},
+    "party.join_queue": set(),
+    "party.leave_queue": set(),
+    "party.set_ready": {"ready"},
+    "party.invite": {"game_name", "tag_line"},
+    "party.remove_member": {"puuid"},
+    "party.set_accessibility": {"accessibility"},
+    "party.generate_code": set(),
+    "pregame.select_agent": {"agent_id"},
+    "pregame.lock_agent": {"agent_id"},
+    "chat.send": {"cid", "message", "chat_type"},
+    "current_game.leave": {"confirmed"},
+    "match.accept": set(),
+}
+
+
+class LiveCommandCreate(BaseModel):
+    command_id: str = Field(default_factory=lambda: str(uuid4()), min_length=8, max_length=80)
+    command: str = Field(min_length=3, max_length=80)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_typed_command(self) -> "LiveCommandCreate":
+        expected = LIVE_COMMAND_FIELDS.get(self.command)
+        if expected is None:
+            raise ValueError("Comando ao vivo não permitido.")
+        supplied = set(self.payload)
+        if supplied != expected:
+            raise ValueError("Payload do comando não corresponde ao contrato permitido.")
+        if self.command == "party.change_queue":
+            _require_text(self.payload, "queue_id", 40)
+        elif self.command == "party.set_ready" and not isinstance(self.payload.get("ready"), bool):
+            raise ValueError("ready deve ser booleano.")
+        elif self.command == "party.invite":
+            _require_text(self.payload, "game_name", 80)
+            _require_text(self.payload, "tag_line", 20)
+        elif self.command == "party.remove_member":
+            _require_text(self.payload, "puuid", 120)
+        elif self.command == "party.set_accessibility":
+            if self.payload.get("accessibility") not in {"OPEN", "CLOSED"}:
+                raise ValueError("A privacidade deve ser OPEN ou CLOSED.")
+        elif self.command in {"pregame.select_agent", "pregame.lock_agent"}:
+            _require_text(self.payload, "agent_id", 80)
+        elif self.command == "chat.send":
+            _require_text(self.payload, "cid", 180)
+            _require_text(self.payload, "message", 280)
+            if self.payload.get("chat_type") not in {"chat", "groupchat"}:
+                raise ValueError("Tipo de chat não permitido.")
+        elif self.command == "current_game.leave" and self.payload.get("confirmed") is not True:
+            raise ValueError("A saída exige confirmação explícita.")
+        return self
+
+
+class LiveCommandRecord(LiveCommandCreate):
+    user_id: str
+    device_id: str
+    status: LiveCommandStatus = "queued"
+    result: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    expires_at: datetime
+    delivered_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
+def _require_text(payload: dict[str, Any], key: str, maximum: int) -> str:
+    value = payload.get(key)
+    if not isinstance(value, str) or not value.strip() or len(value) > maximum:
+        raise ValueError(f"{key} é inválido.")
+    return value.strip()
 
 
 class RouteInfo(BaseModel):

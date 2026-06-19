@@ -1,8 +1,19 @@
-const { app, BrowserWindow, clipboard, ipcMain, shell } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  Tray,
+  clipboard,
+  ipcMain,
+  safeStorage,
+  shell,
+} = require("electron");
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
 const { randomUUID, createHash } = require("crypto");
+const { SecureStore } = require("./live/secure-store");
+const { LiveAgent } = require("./live/live-agent");
 
 const DEFAULT_BACKEND_URL = "https://valcomp-api-cda2.fly.dev";
 const DOWNLOAD_MANIFEST_URL =
@@ -22,6 +33,9 @@ let mainWindow = null;
 let riotPayload = null;
 let logFile = null;
 let latestDesktopUpdate = null;
+let tray = null;
+let liveAgent = null;
+let isQuitting = false;
 
 function jwtTiming(token) {
   try {
@@ -532,6 +546,30 @@ function registerIpc() {
     clipboard.writeText(String(text || ""));
     return { ok: true };
   });
+  ipcMain.handle("live:status", () => liveAgent?.status() || null);
+  ipcMain.handle("live:pair", async (_, input) => {
+    try {
+      const code = String(input?.code || "");
+      if (!/^\d{6}$/.test(code)) throw new Error("Digite o código de 6 números mostrado no celular.");
+      const backendUrl = validateBackendUrl(input?.backendUrl);
+      return { ok: true, data: await liveAgent.pair({ pairCode: code, backendUrl }) };
+    } catch (error) {
+      logEvent("error", "companion_pair_failed", { error: String(error) });
+      return { ok: false, error: String(error.message || error) };
+    }
+  });
+  ipcMain.handle("live:unpair", async () => {
+    await liveAgent.unpair();
+    return { ok: true };
+  });
+  ipcMain.handle("live:auto-launch", (_, enabled) => ({
+    ok: true,
+    preferences: liveAgent.setAutoLaunch(Boolean(enabled)),
+  }));
+  ipcMain.handle("live:refresh", async () => {
+    await liveAgent.pollNow();
+    return liveAgent.status();
+  });
   ipcMain.on("diagnostics:renderer", (_, payload) => {
     logEvent("info", payload?.event || "renderer_event", payload?.context || {});
   });
@@ -558,8 +596,13 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mainWindow.webContents.on("will-navigate", (event) => event.preventDefault());
+  mainWindow.on("close", (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    mainWindow.hide();
+  });
   mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
+    if (!process.argv.includes("--hidden")) mainWindow.show();
     const screenshotPath = process.env.VALCOMP_SCREENSHOT_PATH;
     if (screenshotPath) {
       setTimeout(async () => {
@@ -568,6 +611,34 @@ function createWindow() {
         app.quit();
       }, 1800);
     }
+  });
+}
+
+function createTray() {
+  tray = new Tray(path.join(__dirname, "..", "assets", "app-icon.ico"));
+  tray.setToolTip("Valcomp Companion");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: "Abrir Valcomp Companion",
+        click: () => {
+          mainWindow?.show();
+          mainWindow?.focus();
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Sair",
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ]),
+  );
+  tray.on("double-click", () => {
+    mainWindow?.show();
+    mainWindow?.focus();
   });
 }
 
@@ -585,11 +656,27 @@ app.whenReady().then(() => {
   app.setAppUserModelId("com.cda2.valcomp.companion");
   initializeLogging();
   logEvent("info", "app_started", { packaged: app.isPackaged });
+  const secureStore = new SecureStore({ app, safeStorage });
+  const preferences = secureStore.loadPreferences();
+  if (preferences.consented) {
+    app.setLoginItemSettings({ openAtLogin: Boolean(preferences.autoLaunch), openAsHidden: true });
+  }
+  liveAgent = new LiveAgent({ app, secureStore, log: logEvent });
   registerIpc();
   createWindow();
+  createTray();
+  liveAgent.on("snapshot", (snapshot) => mainWindow?.webContents.send("live:snapshot", snapshot));
+  liveAgent.on("status", (status) => mainWindow?.webContents.send("live:status-changed", status));
+  liveAgent.on("command", (command) => mainWindow?.webContents.send("live:command", command));
+  liveAgent.start();
 });
 
 app.on("window-all-closed", () => {
   riotPayload = null;
-  app.quit();
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
+  riotPayload = null;
+  liveAgent?.close();
 });

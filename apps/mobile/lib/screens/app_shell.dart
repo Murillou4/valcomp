@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../widgets/bottom_nav.dart';
 import 'home_screen.dart';
+import 'live_screen.dart';
 import 'stats_screen.dart';
 import 'store_screen.dart';
 
@@ -14,6 +15,7 @@ class AppShell extends StatelessWidget {
     StoreScreen(key: ValueKey('store')),
     HomeScreen(key: ValueKey('home')),
     StatsScreen(key: ValueKey('stats')),
+    LiveScreen(key: ValueKey('live')),
   ];
 
   @override

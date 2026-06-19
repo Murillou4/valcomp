@@ -12,7 +12,12 @@
 - Mobile Android Flutter: APK gerado em `docs/downloads/valcomp-mobile.apk`.
 - Wishlist mobile com catalogo real de skins, busca e filtros por categoria,
   arma, raridade e ordenacao.
-- Companion Windows: executavel unico em `docs/downloads/valcomp-companion-windows.exe`.
+- Companion Windows: executavel versionado em
+  `docs/downloads/valcomp-companion-windows-2.0.1.exe`.
+- Live Companion: bandeja persistente, WebSockets autenticados e pagina Partida
+  no Android para lobby, fila, pre-game e partida.
+- Renovacao silenciosa: o Companion 2.0.1 atualiza a sessao Riot criptografada
+  no backend e o mobile 1.3.1 recarrega rank, loja e historico automaticamente.
 - Pagina publica para GitHub Pages: `docs/index.html`.
 - O app mobile nao deve depender de `dev:mobile-user` em producao.
 
@@ -118,6 +123,10 @@ Principais rotas:
 - `POST /notifications/devices`
 - `GET /notifications/devices`
 - `DELETE /notifications/devices/{device_id}`
+- `POST /companion/pair/start` e `POST /companion/pair/complete`
+- `GET /companion/devices`
+- `GET /live/state` e `POST /live/commands`
+- `WS /ws/companion` e `WS /ws/live`
 - `GET /notifications/deliveries`
 - `GET /valorant/skins/watchlist`
 - `POST /valorant/skins/watchlist`

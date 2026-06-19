@@ -37,9 +37,23 @@ class BackendSettings(BaseSettings):
     default_client_version: str = ""
 
     link_code_ttl_seconds: int = 600
+    companion_pair_code_ttl_seconds: int = 600
+    live_command_ttl_seconds: int = 8
+    live_offline_after_seconds: int = 25
+    live_protocol_version: int = 1
+    live_feature_enabled: bool = True
+    live_party_commands_enabled: bool = True
+    live_agent_commands_enabled: bool = True
+    live_chat_commands_enabled: bool = True
+    live_leave_commands_enabled: bool = True
+    live_match_accept_enabled: bool = False
     http_timeout_seconds: float = 18.0
     store_snapshot_ttl_seconds: int = 300
     riot_session_monitor_interval_seconds: int = 300
+    riot_token_proactive_refresh_seconds: int = 900
+    riot_relink_notification_grace_seconds: int = 86400
+    riot_companion_refresh_grace_seconds: int = 900
+    companion_riot_session_sync_min_seconds: int = 60
     allow_unsafe_mutations: bool = False
     job_secret_token: str = ""
     valorant_assets_language: str = "pt-BR"

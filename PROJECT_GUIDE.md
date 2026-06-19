@@ -30,10 +30,10 @@ Nunca invente campos do jogo. Antes de criar UI ou normalizadores, confira
 - Desenvolvimento: `.\run-companion.ps1`
 - Build: `.\tools\build_companion_windows.ps1`
 
-O companion roda uma vez no PC em que o usuario joga, detecta a sessao local
-Riot, recebe o codigo de seis digitos e completa `/riot/link/complete`. Ele nao
-mostra nem salva tokens. Deve ser aberto novamente somente quando o backend
-retornar `relink_required`.
+O Companion 2 roda na bandeja, detecta a sessao local Riot, publica estado
+sanitizado em `/ws/companion` e executa apenas comandos tipados. O pareamento
+ao vivo e separado do vinculo Riot e usa segredo protegido por `safeStorage`.
+Tokens Riot continuam somente na memoria do processo principal.
 
 O artefato de distribuicao deve continuar sendo um unico
 `Valcomp Companion.exe`, no formato portable do `electron-builder`. A pasta
@@ -81,14 +81,25 @@ Telas:
 - Wishlist/Alertas;
 - Conta.
 
-A barra inferior possui apenas Loja, Home e Estatisticas. Alertas e Conta ficam
-no header; Vincular aparece nos estados sem conta Riot ou pela tela Conta.
+A barra inferior possui Loja, Home, Estatisticas e Partida. A pagina Partida
+acompanha lobby, fila, pre-game e partida usando apenas snapshots reais do
+Companion; Alertas e Conta continuam no header.
 
-## 4. GitHub Pages
+## 4. Live Companion
+
+- Pareamento: `/companion/pair/start` e `/companion/pair/complete`.
+- Desktop: `/ws/companion` com segredo de dispositivo e heartbeat de 10 s.
+- Mobile: `/ws/live` autenticado pela sessao Valcomp.
+- Estado duravel: `live_snapshots`; comandos: `live_commands`.
+- Nunca encaminhar payload Riot bruto, token, PUUID ou URL arbitraria.
+- `match.accept` permanece desligado ate validacao real do Swagger local.
+- A feature e experimental e nao aprovada pela Riot.
+
+## 5. GitHub Pages
 
 - Pagina: `docs/`
 - APK: `docs/downloads/valcomp-mobile.apk`
-- Companion: `docs/downloads/valcomp-companion-windows.exe`
+- Companion: `docs/downloads/valcomp-companion-windows-2.0.1.exe`
 - Manifesto: `docs/downloads/manifest.json`
 
 ## Fluxo de vinculo

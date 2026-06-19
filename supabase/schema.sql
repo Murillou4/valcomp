@@ -37,6 +37,60 @@ create index if not exists diagnostic_events_user_time_idx
 create index if not exists diagnostic_events_source_time_idx
   on public.diagnostic_events(source, occurred_at desc);
 
+create table if not exists public.companion_pair_codes (
+  code_hash text primary key,
+  user_id text not null,
+  expires_at timestamptz not null,
+  consumed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.companion_devices (
+  device_id text primary key,
+  user_id text not null,
+  device_name text not null,
+  app_version text not null,
+  protocol_version integer not null default 1,
+  secret_hash text not null,
+  active boolean not null default true,
+  revoked_at timestamptz,
+  last_seen_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.live_snapshots (
+  user_id text primary key,
+  device_id text not null,
+  revision bigint not null default 0,
+  phase text not null,
+  state jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.live_commands (
+  command_id text primary key,
+  user_id text not null,
+  device_id text not null,
+  command text not null,
+  payload jsonb not null default '{}'::jsonb,
+  status text not null default 'queued',
+  result jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  delivered_at timestamptz,
+  completed_at timestamptz
+);
+
+create index if not exists companion_pair_codes_expires_idx
+  on public.companion_pair_codes(expires_at);
+create index if not exists companion_devices_user_active_idx
+  on public.companion_devices(user_id, active);
+create unique index if not exists companion_devices_one_active_idx
+  on public.companion_devices(user_id) where active and revoked_at is null;
+create index if not exists live_commands_delivery_idx
+  on public.live_commands(user_id, device_id, status, expires_at);
+
 create table if not exists public.profiles (
   user_id uuid primary key,
   display_name text not null default '',
@@ -166,6 +220,10 @@ alter table public.store_snapshots enable row level security;
 alter table public.push_devices enable row level security;
 alter table public.skin_watches enable row level security;
 alter table public.notification_deliveries enable row level security;
+alter table public.companion_pair_codes enable row level security;
+alter table public.companion_devices enable row level security;
+alter table public.live_snapshots enable row level security;
+alter table public.live_commands enable row level security;
 
 drop policy if exists "profiles are visible to owner" on public.profiles;
 create policy "profiles are visible to owner"

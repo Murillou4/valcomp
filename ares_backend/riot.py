@@ -84,14 +84,20 @@ class RiotAuthService:
         if not record:
             raise RelinkRequiredError("Riot account is not linked.")
         payload = RiotCredentialPayload(**self.crypto.decrypt_json(record.encrypted_payload))
-        if (
-            payload.access_token
-            and payload.entitlement_token
-            and payload.puuid
-            and not access_token_needs_refresh(payload.access_token)
+        complete = bool(
+            payload.access_token and payload.entitlement_token and payload.puuid
+        )
+        if complete and not access_token_needs_refresh(
+            payload.access_token,
+            leeway_seconds=self.settings.riot_token_proactive_refresh_seconds,
         ):
             return self._session_from_payload(payload)
-        refreshed = await self.refresh_payload(payload)
+        try:
+            refreshed = await self.refresh_payload(payload)
+        except RelinkRequiredError:
+            if complete and not access_token_needs_refresh(payload.access_token):
+                return self._session_from_payload(payload)
+            raise
         await self._save_refreshed(user_id, repo, refreshed)
         return self._session_from_payload(refreshed)
 
@@ -110,8 +116,21 @@ class RiotAuthService:
         region, shard = await self._fetch_region(access_token, id_token)
 
         account = userinfo.get("acct", {}) if isinstance(userinfo, dict) else {}
+        refreshed_cookies = {
+            **payload.cookies,
+            **{
+                str(key): str(value)
+                for key, value in auth_data.get("cookies", {}).items()
+                if str(key) and str(value)
+            },
+        }
+        refreshed_ssid = refreshed_cookies.get("ssid") or ssid
+        if refreshed_ssid:
+            refreshed_cookies["ssid"] = refreshed_ssid
         return payload.model_copy(
             update={
+                "ssid": refreshed_ssid,
+                "cookies": refreshed_cookies,
                 "access_token": access_token,
                 "id_token": id_token,
                 "entitlement_token": entitlement,
@@ -274,28 +293,39 @@ class RiotAuthService:
                 user_id=user_id,
                 encrypted_payload=self.crypto.encrypt_json(payload.model_dump()),
                 last_refresh_at=datetime.now(UTC),
-                expires_hint=None,
+                expires_hint=access_token_expiration(payload.access_token),
                 updated_at=datetime.now(UTC),
             )
         )
 
     async def _reauth_with_ssid(
         self, ssid: str, cookies: dict[str, str] | None = None
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         cookie_header = _cookie_header(ssid, cookies)
         response = await self.client.get(
             "https://auth.riotgames.com/authorize",
             params=RIOT_CLIENT_AUTH_PARAMS,
             headers={"Cookie": cookie_header, "User-Agent": ""},
         )
-        location = response.headers.get("location", "")
+        if response.status_code in {401, 403}:
+            raise RelinkRequiredError("O cookie de renovação da Riot não é mais válido.")
+        location = _riot_auth_redirect(response)
         if not location:
-            raise RelinkRequiredError("Riot reauth failed; no redirect location.")
+            raise RelinkRequiredError(
+                "A Riot não aceitou a renovação silenciosa desta sessão."
+            )
         parsed = urlparse(location)
-        fragment = parse_qs(parsed.fragment)
-        data = {key: values[0] for key, values in fragment.items() if values}
+        parameters = {**parse_qs(parsed.query), **parse_qs(parsed.fragment)}
+        data: dict[str, Any] = {
+            key: values[0] for key, values in parameters.items() if values
+        }
         if not data.get("access_token"):
             raise RelinkRequiredError("Riot reauth did not return an access token.")
+        data["cookies"] = {
+            str(key): str(value)
+            for key, value in response.cookies.items()
+            if str(key) and str(value)
+        }
         return data
 
     async def _fetch_entitlement(self, access_token: str) -> str:
@@ -540,6 +570,13 @@ class RiotRemoteClient:
 
 
 def access_token_needs_refresh(token: str, *, leeway_seconds: int = 60) -> bool:
+    expires_at = access_token_expiration(token)
+    if expires_at is None:
+        return False
+    return expires_at <= datetime.now(UTC) + timedelta(seconds=leeway_seconds)
+
+
+def access_token_expiration(token: str) -> datetime | None:
     try:
         claims = jwt.decode(
             token,
@@ -551,11 +588,45 @@ def access_token_needs_refresh(token: str, *, leeway_seconds: int = 60) -> bool:
             algorithms=["RS256", "HS256"],
         )
     except jwt.PyJWTError:
-        return False
+        return None
     expires_at = claims.get("exp")
     if not isinstance(expires_at, (int, float)):
-        return False
-    return float(expires_at) <= datetime.now(UTC).timestamp() + leeway_seconds
+        return None
+    try:
+        return datetime.fromtimestamp(float(expires_at), UTC)
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def _riot_auth_redirect(response: httpx.Response) -> str:
+    location = response.headers.get("location", "").strip()
+    if location:
+        return location
+    try:
+        payload = response.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = None
+
+    def find(value: Any, depth: int = 0) -> str:
+        if depth > 5:
+            return ""
+        if isinstance(value, dict):
+            for key in ("uri", "redirect_uri", "location", "url"):
+                candidate = value.get(key)
+                if isinstance(candidate, str) and "access_token=" in candidate:
+                    return candidate
+            for nested in value.values():
+                candidate = find(nested, depth + 1)
+                if candidate:
+                    return candidate
+        elif isinstance(value, list):
+            for nested in value[:20]:
+                candidate = find(nested, depth + 1)
+                if candidate:
+                    return candidate
+        return ""
+
+    return find(payload)
 
 
 def _raise_for_riot_auth(response: httpx.Response, action: str) -> None:

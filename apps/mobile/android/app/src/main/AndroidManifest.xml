@@ -1,9 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Valcomp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <meta-data
+            android:name="com.cda2.valcomp.match_found_sound"
+            android:resource="@raw/match_found" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="skin_alerts" />
