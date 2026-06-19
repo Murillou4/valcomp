@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-06-17",
+  "generated_at": "2026-06-19",
   "backend_url": "https://valcomp-api-cda2.fly.dev",
   "mobile": {
     "name": "Valcomp Mobile APK",
     "framework": "Flutter 3.41.9",
     "package": "com.cda2.valcomp",
-    "version": "1.1.6",
-    "build": 10,
+    "version": "1.1.7",
+    "build": 11,
     "file": "valcomp-mobile.apk",
     "size_bytes": 62926800,
-    "sha256": "DDC2ED780685C34EE78836B49A6690BBEA1D24E2A26E08352D7F077C225EFC24",
+    "sha256": "BDC023613EE66F264E6B69D41DA45B3566278F38327E432CACF835F3C65D1591",
     "signer_sha256": "C9702855214494288B8356C18077E00A29313C09D930894DCFDCA34B7E5DA11F"
   },
   "desktop": {

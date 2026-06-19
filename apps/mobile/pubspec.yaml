@@ -1,7 +1,7 @@
 name: valcomp
 description: "Valcomp: loja, estatisticas e alertas do VALORANT."
 publish_to: none
-version: 1.1.6+10
+version: 1.1.7+11
 
 environment:
   sdk: ^3.11.5
