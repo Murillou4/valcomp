@@ -34,6 +34,19 @@ void main() {
     expect(tokens['id_token'], 'id-456');
   });
 
+  test('Riot mobile login uses Valorant web authorization client', () {
+    final loginUri = Uri.parse(riotLoginUrlForTest());
+
+    expect(loginUri.host, 'auth.riotgames.com');
+    expect(loginUri.path, '/authorize');
+    expect(loginUri.queryParameters['client_id'], 'play-valorant-web-prod');
+    expect(
+      loginUri.queryParameters['redirect_uri'],
+      'https://playvalorant.com/opt_in',
+    );
+    expect(loginUri.queryParameters['scope'], 'account openid');
+  });
+
   test('update version comparator honors version and build', () {
     expect(isNewerVersionForTest('1.1.6', 1, '1.1.5', 99), isTrue);
     expect(isNewerVersionForTest('1.1.5', 10, '1.1.5', 9), isTrue);

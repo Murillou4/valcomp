@@ -26,11 +26,11 @@ class _RiotMobileLoginScreenState extends State<RiotMobileLoginScreen> {
 
   static final WebUri _loginUri = WebUri.uri(
     Uri.https('auth.riotgames.com', '/authorize', {
-      'redirect_uri': 'http://localhost/redirect',
-      'client_id': 'riot-client',
+      'redirect_uri': 'https://playvalorant.com/opt_in',
+      'client_id': 'play-valorant-web-prod',
       'response_type': 'token id_token',
       'nonce': '1',
-      'scope': 'openid link ban lol_region account',
+      'scope': 'account openid',
     }),
   );
 
@@ -237,6 +237,9 @@ Map<String, String>? riotTokenParametersFromUrlForTest(String url) {
   if (tokens == null) return null;
   return {'access_token': tokens.accessToken, 'id_token': tokens.idToken};
 }
+
+String riotLoginUrlForTest() =>
+    _RiotMobileLoginScreenState._loginUri.toString();
 
 _RiotWebTokens? _tokensFromUrl(WebUri url) {
   return _tokensFromUri(Uri.tryParse(url.toString()));

@@ -119,7 +119,7 @@ def test_mobile_web_login_prefers_redirect_access_token_before_ssid_reauth() -> 
                 302,
                 headers={
                     "location": (
-                        "http://localhost/redirect#access_token=ssid-access-token"
+                        "https://playvalorant.com/opt_in#access_token=ssid-access-token"
                         "&id_token=ssid-id-token"
                     )
                 },
@@ -173,11 +173,16 @@ def test_mobile_web_login_falls_back_to_ssid_when_redirect_token_is_rejected() -
     def handler(request: httpx.Request) -> httpx.Response:
         authorization = request.headers.get("authorization", "")
         if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":
+            assert request.url.params.get("client_id") == "play-valorant-web-prod"
+            assert request.url.params.get("redirect_uri") == "https://playvalorant.com/opt_in"
+            assert request.url.params.get("scope") == "account openid"
+            assert "ssid=ssid-cookie" in request.headers.get("cookie", "")
+            assert "clid=cookie-value" in request.headers.get("cookie", "")
             return httpx.Response(
                 302,
                 headers={
                     "location": (
-                        "http://localhost/redirect#access_token=ssid-access-token"
+                        "https://playvalorant.com/opt_in#access_token=ssid-access-token"
                         "&id_token=ssid-id-token"
                     )
                 },
@@ -213,7 +218,7 @@ def test_mobile_web_login_falls_back_to_ssid_when_redirect_token_is_rejected() -
             access_token="direct-access-token",
             id_token="direct-id-token",
             ssid="ssid-cookie",
-            cookies={"ssid": "ssid-cookie"},
+            cookies={"ssid": "ssid-cookie", "clid": "cookie-value"},
         )
 
         assert payload.access_token == "ssid-access-token"
@@ -228,14 +233,14 @@ def test_mobile_web_login_falls_back_to_ssid_when_redirect_token_is_rejected() -
 def test_mobile_web_login_entitlement_403_becomes_relink_required() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.host == "auth.riotgames.com" and request.url.path == "/authorize":
-            assert request.url.params.get("client_id") == "riot-client"
-            assert request.url.params.get("redirect_uri") == "http://localhost/redirect"
+            assert request.url.params.get("client_id") == "play-valorant-web-prod"
+            assert request.url.params.get("redirect_uri") == "https://playvalorant.com/opt_in"
             return httpx.Response(
                 302,
                 headers={
                     "location": (
-                        "http://localhost/redirect#access_token=riot-client-access"
-                        "&id_token=riot-client-id"
+                        "https://playvalorant.com/opt_in#access_token=valorant-web-access"
+                        "&id_token=valorant-web-id"
                     )
                 },
             )

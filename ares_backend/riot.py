@@ -27,12 +27,12 @@ REGION_TO_SHARD = {
     "kr": "kr",
 }
 
-RIOT_CLIENT_AUTH_PARAMS = {
-    "redirect_uri": "http://localhost/redirect",
-    "client_id": "riot-client",
+RIOT_WEB_AUTH_PARAMS = {
+    "redirect_uri": "https://playvalorant.com/opt_in",
+    "client_id": "play-valorant-web-prod",
     "response_type": "token id_token",
     "nonce": "1",
-    "scope": "openid link ban lol_region account",
+    "scope": "account openid",
 }
 
 
@@ -99,7 +99,7 @@ class RiotAuthService:
         ssid = payload.ssid or payload.cookies.get("ssid", "")
         if not ssid:
             raise RelinkRequiredError("Riot reauth cookie is missing; relink required.")
-        auth_data = await self._reauth_with_ssid(ssid)
+        auth_data = await self._reauth_with_ssid(ssid, payload.cookies)
         access_token = auth_data.get("access_token", "")
         id_token = auth_data.get("id_token", "")
         if not access_token:
@@ -146,7 +146,7 @@ class RiotAuthService:
         if access_token_needs_refresh(access_token, leeway_seconds=300):
             if not clean_ssid:
                 raise RelinkRequiredError("A sessão Riot retornada pelo login já veio expirada.")
-            auth_data = await self._reauth_with_ssid(clean_ssid)
+            auth_data = await self._reauth_with_ssid(clean_ssid, cookie_map)
             access_token = auth_data.get("access_token", "")
             id_token = auth_data.get("id_token", id_token)
             used_reauth_token = True
@@ -162,7 +162,7 @@ class RiotAuthService:
         except RelinkRequiredError:
             if not clean_ssid or used_reauth_token:
                 raise
-            auth_data = await self._reauth_with_ssid(clean_ssid)
+            auth_data = await self._reauth_with_ssid(clean_ssid, cookie_map)
             fallback_access_token = auth_data.get("access_token", "")
             if not fallback_access_token or fallback_access_token == access_token:
                 raise
@@ -236,11 +236,14 @@ class RiotAuthService:
             )
         )
 
-    async def _reauth_with_ssid(self, ssid: str) -> dict[str, str]:
+    async def _reauth_with_ssid(
+        self, ssid: str, cookies: dict[str, str] | None = None
+    ) -> dict[str, str]:
+        cookie_header = _cookie_header(ssid, cookies)
         response = await self.client.get(
             "https://auth.riotgames.com/authorize",
-            params=RIOT_CLIENT_AUTH_PARAMS,
-            headers={"Cookie": f"ssid={ssid}", "User-Agent": ""},
+            params=RIOT_WEB_AUTH_PARAMS,
+            headers={"Cookie": cookie_header, "User-Agent": ""},
         )
         location = response.headers.get("location", "")
         if not location:
@@ -495,3 +498,14 @@ def riot_error_code(response: httpx.Response) -> str:
         or payload.get("code")
         or ""
     ).upper()
+
+
+def _cookie_header(ssid: str, cookies: dict[str, str] | None = None) -> str:
+    merged = {
+        str(key): str(value)
+        for key, value in (cookies or {}).items()
+        if str(key) and str(value)
+    }
+    if ssid:
+        merged["ssid"] = ssid
+    return "; ".join(f"{key}={value}" for key, value in merged.items())
