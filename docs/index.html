@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preload" href="./assets/fonts/Asgard-ExtraBold.ttf" as="font" type="font/ttf" crossorigin />
-    <link rel="stylesheet" href="./styles.css?v=20260619-3" />
+    <link rel="stylesheet" href="./styles.css?v=20260622-1" />
     <script>
       document.documentElement.classList.add("motion-ready");
     </script>
@@ -170,16 +170,18 @@
         </section>
 
         <section class="section product-section" id="produto" aria-labelledby="produto-title">
-          <div class="section-heading" data-reveal>
-            <p class="eyebrow">Produto</p>
-            <h2 id="produto-title">Feito para quem quer saber quando a skin aparece.</h2>
-            <p>
-              O Valcomp junta o celular e o PC em um fluxo curto: você vincula uma vez,
-              vê sua rotação e deixa a wishlist trabalhar por você.
-            </p>
-          </div>
-
           <div class="bento-grid">
+            <article class="bento-card bento-intro" data-reveal>
+              <div>
+                <p class="eyebrow">Produto</p>
+                <h2 id="produto-title">Feito para quem quer saber quando a skin aparece.</h2>
+              </div>
+              <p>
+                O Valcomp junta o celular e o PC em um fluxo curto: você vincula uma vez,
+                vê sua rotação e deixa a wishlist trabalhar por você.
+              </p>
+            </article>
+
             <article class="bento-card bento-store" data-reveal data-tilt>
               <div class="panel-copy">
                 <span class="feature-kicker">Loja</span>
@@ -243,19 +245,27 @@
             </article>
 
             <article class="bento-card bento-sync" data-reveal>
-              <span class="feature-kicker">Companion</span>
-              <h3>Celular e PC no mesmo fluxo.</h3>
-              <p>
-                O código de vínculo conecta o app ao companion Windows e mantém a consulta organizada, sem tela solta nem configuração confusa.
-              </p>
-              <div class="sync-rail" aria-hidden="true">
-                <span>APK</span>
-                <i></i>
-                <span>6 dígitos</span>
-                <i></i>
-                <span>Windows</span>
-                <i></i>
-                <span>Alerta</span>
+              <div class="sync-copy">
+                <span class="feature-kicker">Companion</span>
+                <h3>Celular e PC no mesmo fluxo.</h3>
+                <p>
+                  O código de vínculo conecta o app ao companion Windows e mantém a consulta organizada, sem tela solta nem configuração confusa.
+                </p>
+              </div>
+              <div class="sync-flow" aria-hidden="true">
+                <div class="sync-rail">
+                  <span>APK</span>
+                  <i></i>
+                  <span>6 dígitos</span>
+                  <i></i>
+                  <span>Windows</span>
+                  <i></i>
+                  <span>Alerta</span>
+                </div>
+                <div class="sync-note">
+                  <span></span>
+                  <strong>Fluxo vinculado</strong>
+                </div>
               </div>
             </article>
           </div>
