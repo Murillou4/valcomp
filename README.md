@@ -1,144 +1,91 @@
-# Ares Console
+# Valcomp
 
-> Novo mapa do projeto: leia `PROJECT_GUIDE.md` antes de mexer no backend,
-> companion Windows ou app mobile Flutter.
+Valcomp is a companion app for VALORANT players who want to check the daily
+store on mobile, keep a skin wishlist, and get notified when a monitored skin
+comes back.
 
-## Estado atual do Valcomp
+Live page: https://murillou4.github.io/valcomp/
 
-- Backend em producao: `https://valcomp-api-cda2.fly.dev`.
-- Auth do app: email/senha pelo proprio backend em `/auth/signup`, `/auth/login`
-  e `/auth/refresh`, usando Supabase Auth por baixo. OAuth Google/GitHub ficou
-  fora por enquanto.
-- Mobile Android Flutter: APK gerado em `docs/downloads/valcomp-mobile.apk`.
-- Wishlist mobile com catalogo real de skins, busca e filtros por categoria,
-  arma, raridade e ordenacao.
-- Companion Windows: executavel versionado em
-  `docs/downloads/valcomp-companion-windows-2.0.1.exe`.
-- Live Companion: bandeja persistente, WebSockets autenticados e pagina Partida
-  no Android para lobby, fila, pre-game e partida.
-- Renovacao silenciosa: o Companion 2.0.1 atualiza a sessao Riot criptografada
-  no backend e o mobile 1.3.2 recarrega rank, loja e historico automaticamente.
-- Pagina publica para GitHub Pages: `docs/index.html`.
-- O app mobile nao deve depender de `dev:mobile-user` em producao.
+## What ships in this repo
 
-Cliente desktop moderno em Python para explorar as APIs não oficiais usadas pelo
-cliente do VALORANT. O catálogo inclui as 82 operações documentadas em
-[valapidocs.techchrism.me](https://valapidocs.techchrism.me), incluindo HTTP,
-WebSocket local e XMPP.
+- Public GitHub Pages landing in `docs/`.
+- Android Flutter app in `apps/mobile`.
+- Windows Electron companion in `apps/desktop`.
+- FastAPI backend in `ares_backend`.
+- Supabase schema in `supabase/schema.sql`.
+- Release artifacts in `docs/downloads/`.
 
-## Recursos
+## Current public downloads
 
-- Interface Qt 6/QML escura, responsiva e com busca por rota, método ou URL.
-- Leitura automática do lockfile local do Riot Client.
-- Detecção de token, entitlement, PUUID, região, shard e versão do cliente.
-- Preenchimento automático de IDs de party, pre-game e partida atual quando disponíveis.
-- Headers Riot injetados automaticamente sem expor tokens na interface.
-- Cookies persistentes para os endpoints de autenticação.
-- Editor de variáveis, query params, JSON, headers extras e resposta formatada.
-- Confirmação antes de executar `POST`, `PUT`, `PATCH` ou `DELETE`.
-- WebSocket local com assinatura automática de `OnJsonApiEvent`.
-- XMPP direto por TLS com autenticação RSO/PAS e envio de XML bruto.
+| Target | File | Version | Size | SHA-256 |
+| --- | --- | --- | --- | --- |
+| Android | `valcomp-mobile.apk` | `1.4.0` build `18` | `64.9 MB` | `8AD49BF346209184B269735EDC173AADBFA0C7A46B08B49550E1D651A5F67ED0` |
+| Windows | `valcomp-companion-windows-2.1.0.exe` | `2.1.0` | `93.2 MB` | `7C3E95635C06768043E2C28C2B0111870C0EB588B1B4688996C9092A90B7DF11` |
 
-## Executar
-
-No PowerShell:
+The landing reads `docs/downloads/manifest.json` at runtime and keeps the static
+HTML values as fallback. After replacing any download artifact, run:
 
 ```powershell
-.\run.ps1
+powershell -ExecutionPolicy Bypass -File .\tools\update_download_manifest.ps1
 ```
 
-O script cria `.venv`, instala as dependências e abre o aplicativo. Para preparar
-o ambiente manualmente:
+## Product flow
+
+1. Install the Android APK.
+2. Sign in on mobile.
+3. Generate a short pairing code.
+4. Open the Windows companion on the PC where Riot Client or VALORANT is logged in.
+5. Paste the code and let the backend connect store, wishlist, and alerts.
+
+## Local preview
+
+The Pages site is static. From the repo root:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m ares_console
+python -m http.server 4173 --directory docs
 ```
 
-O Riot Client precisa estar aberto e com uma sessão autenticada. Algumas rotas
-também exigem que o VALORANT esteja em uma fase específica, como party, seleção
-de agente ou partida.
+Open:
 
-## Segurança
-
-- Tokens, entitlement e senha do lockfile ficam apenas na memória.
-- O aplicativo não grava credenciais em arquivos.
-- Headers sensíveis e `Set-Cookie` são ocultados no painel de resposta.
-- Certificados inválidos só são aceitos nas conexões locais em `127.0.0.1`.
-- APIs remotas continuam usando validação TLS normal.
-
-Esses endpoints não são oficiais nem possuem garantia de estabilidade. Use
-operações mutáveis com cuidado e respeite os termos da Riot Games.
-
-## Atualizar o catálogo
-
-O arquivo `ares_console/resources/endpoints.json` é gerado mecanicamente a partir
-do pacote `valorant-api-types` do projeto de documentação:
-
-```powershell
-node tools/export_catalog.mjs `
-  "C:\caminho\para\valorant-api-docs\valorant-api-types" `
-  "ares_console\resources\endpoints.json"
+```text
+http://127.0.0.1:4173/
 ```
 
-Antes disso, execute `npm ci` e `npm run build` dentro de
-`valorant-api-types`.
+Before pushing a landing change, check:
 
-## Testes
+- Desktop width around `1280x720`.
+- Mobile width around `390x844`.
+- No horizontal overflow.
+- Hero, bento, flow, downloads, final CTA, and notes.
+- Console has no errors.
+- `docs/index.html` references the newest `styles.css?v=...` cache key.
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest
+## Backend
+
+Production API:
+
+```text
+https://valcomp-api-cda2.fly.dev
 ```
 
-Fonte do catálogo:
-[techchrism/valorant-api-docs](https://github.com/techchrism/valorant-api-docs).
+Important routes:
 
-## Backend FastAPI para mobile
-
-Este repositorio tambem inclui `ares_backend`, uma API FastAPI pensada para app
-mobile com Supabase Auth/Postgres/Storage e sem Riot Developer API key. O app
-mobile autentica no Supabase e envia `Authorization: Bearer <supabase_jwt>` para
-o backend.
-
-Principais rotas:
-
-- `POST /auth/session/verify`
-- `POST /riot/link/start`
-- `POST /riot/link/complete`
-- `GET /me` e `PATCH /me`
-- `GET /valorant/routes`
-- `POST /valorant/routes/{route_id}`
+- `POST /auth/signup`
+- `POST /auth/login`
+- `POST /auth/refresh`
 - `GET /valorant/store/daily`
-- `GET /valorant/store/wallet`
-- `GET /valorant/store/inventory`
-- `GET /valorant/store/offers`
 - `GET /valorant/store/night-market`
-- `GET /valorant/store/bundles`
-- `GET /valorant/items/{category}` para `weapons`, `skins`, `skin-levels`,
-  `chromas`, `buddies`, `cards` e `titles`
-- `GET /valorant/items/{item_id}/status`
-- `GET /valorant/player/profile`, `/mmr`, `/matches`, `/loadout`, `/xp`,
-  `/contracts`, `/item-upgrades` e `/content`
-- `POST /notifications/devices`
-- `GET /notifications/devices`
-- `DELETE /notifications/devices/{device_id}`
-- `POST /companion/pair/start` e `POST /companion/pair/complete`
-- `GET /companion/devices`
-- `GET /live/state` e `POST /live/commands`
-- `WS /ws/companion` e `WS /ws/live`
-- `GET /notifications/deliveries`
-- `GET /valorant/skins/watchlist`
 - `POST /valorant/skins/watchlist`
-- `DELETE /valorant/skins/watchlist/{item_id}`
 - `POST /valorant/skins/watchlist/check`
+- `POST /notifications/devices`
+- `POST /companion/pair/start`
+- `POST /companion/pair/complete`
+- `GET /live/state`
+- `WS /ws/companion`
+- `WS /ws/live`
 - `POST /jobs/store-alerts/run`
 
-Rotas locais, chat local, WebSocket, XMPP, party/pre-game/current-game ao vivo e
-mutacoes perigosas sao classificadas em `/valorant/routes` e retornam resposta
-estruturada quando nao podem rodar em backend hospedado.
-
-### Rodar local
+Run locally:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
@@ -146,82 +93,36 @@ Copy-Item .env.example .env
 .\.venv\Scripts\python.exe -m ares_backend
 ```
 
-Em desenvolvimento, `ALLOW_DEV_AUTH=true` permite testar com:
-
-```text
-Authorization: Bearer dev:mobile-user
-```
-
-### Supabase
-
-Execute `supabase/schema.sql` no SQL editor do Supabase. Ele cria `profiles`,
-`riot_accounts`, `riot_credentials`, `link_codes`, `store_snapshots`,
-`item_cache` e o bucket publico `avatars`.
-
-Variaveis necessarias no backend:
+Required production variables include:
 
 - `APP_SECRET_KEY`
 - `SUPABASE_URL`
-- `SUPABASE_ANON_KEY` ou publishable key
+- `SUPABASE_ANON_KEY`
 - `DATABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` opcional quando `DATABASE_URL` estiver configurado
-- `SUPABASE_JWT_SECRET` opcional; sem ele o backend valida JWT pela API Auth do Supabase
-- `ALLOW_DEV_AUTH=false` em producao
-- `JOB_SECRET_TOKEN` para cron de alertas
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_JWT_SECRET`
+- `JOB_SECRET_TOKEN`
+- `ALLOW_DEV_AUTH=false`
 
-### Notificacoes de skin
+## Windows companion
 
-Para o usuario ser avisado quando uma skin desejada cair na loja:
-
-1. O mobile registra o token FCM em `POST /notifications/devices`.
-2. O usuario adiciona a skin em `POST /valorant/skins/watchlist`.
-3. O backend checa automaticamente em `GET /valorant/store/daily`.
-4. Para checagem sem o usuario abrir o app, configure um cron externo chamando:
-
-```powershell
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "https://valcomp-api-cda2.fly.dev/jobs/store-alerts/run" `
-  -Headers @{ "X-Job-Token" = "<JOB_SECRET_TOKEN>" }
-```
-
-O backend grava entregas em `notification_deliveries`, entao a mesma skin nao
-gera spam dentro da mesma rotacao de loja.
-
-### Companion Windows
-
-Depois que o app chamar `POST /riot/link/start`, rode no PC onde o Riot Client
-esta logado. O companion atual fica em `apps/desktop` e usa Electron. Para
-abri-lo em desenvolvimento:
+Development:
 
 ```powershell
 .\run-companion.ps1
 ```
 
-Para usar o modo CLI:
-
-```powershell
-.\.venv\Scripts\python.exe -m ares_backend.companion `
-  --backend-url https://valcomp-api-cda2.fly.dev `
-  --code 123456
-```
-
-O processo principal do Electron le a sessao Riot local, envia tokens/SSID para
-o backend pelo codigo one-time e pode ser fechado. Esses dados ficam somente em
-memoria. Se a sessao expirar ou MFA bloquear o refresh, a API retorna
-`relink_required`.
-
-Para gerar o build Windows:
+Build:
 
 ```powershell
 .\tools\build_companion_windows.ps1
 ```
 
-O executavel unico, com recursos embutidos, fica em `dist\Valcomp Companion.exe`.
+The companion reads the local Riot session, sends the pairing payload to the
+backend, and can be closed after linking. It does not ask the user to type Riot
+credentials into Valcomp.
 
-### Mobile Flutter
-
-O app mobile fica em `apps/mobile`:
+## Android app
 
 ```powershell
 cd apps/mobile
@@ -230,23 +131,39 @@ flutter analyze
 flutter run
 ```
 
-As telas cobrem login/cadastro, Home, loja diaria/Mercado Noturno, estatisticas,
-detalhes de partidas e skins, vinculo, wishlist/alertas e conta.
+The mobile app covers auth, home, daily store, night market, wishlist, alerts,
+stats, match details, account, and companion pairing.
 
-### Fly.io
+## Release checklist
 
-O deploy usa `Dockerfile` sem instalar a UI Qt pesada:
+1. Build Android and Windows artifacts.
+2. Copy artifacts into `docs/downloads/`.
+3. Update `docs/downloads/manifest.json`:
 
-```powershell
-fly apps create valcomp-api-cda2 --org personal
-fly secrets set --app valcomp-api-cda2 ENVIRONMENT=production ALLOW_DEV_AUTH=false SUPABASE_URL=... SUPABASE_ANON_KEY=...
-.\tools\fly_set_private_secrets.ps1
-fly deploy
-```
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\tools\update_download_manifest.ps1
+   ```
 
-Para aplicar o schema no Supabase sem salvar senha no repo:
+4. Update landing cache keys when CSS changes.
+5. Preview locally on desktop and mobile.
+6. Run:
 
-```powershell
-$env:DATABASE_URL="postgresql://postgres:<senha>@db.<project>.supabase.co:5432/postgres"
-.\tools\apply_supabase_schema.ps1
-```
+   ```powershell
+   git diff --check
+   ```
+
+7. Commit and push `main`; GitHub Pages serves from `/docs`.
+
+## Security notes
+
+- Valcomp is an independent project and is not affiliated with Riot Games.
+- The Windows beta executable is currently unsigned, so SmartScreen can show
+  `Unknown publisher`.
+- Validate the SHA-256 from the landing before running a downloaded file.
+- Riot tokens are handled through the backend/companion flow; do not commit
+  secrets, sessions, or `.env` files.
+
+## Public disclaimer
+
+VALORANT is a trademark of Riot Games, Inc. This repository and the Valcomp app
+are independent and are not endorsed by Riot Games.

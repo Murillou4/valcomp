@@ -3,17 +3,55 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Valcomp | Loja diária, wishlist e alertas para VALORANT</title>
+    <title>Valcomp | Loja diária e alertas de skins para VALORANT</title>
     <meta
       name="description"
-      content="Teste o Valcomp: app companion para consultar sua loja diária do VALORANT, montar wishlist de skins e receber alertas no Android."
+      content="Baixe o Valcomp para consultar sua loja diária do VALORANT no celular, monitorar wishlist e receber alertas quando a skin voltar."
     />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://murillou4.github.io/valcomp/" />
+    <meta property="og:site_name" content="Valcomp" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://murillou4.github.io/valcomp/" />
+    <meta property="og:title" content="Valcomp | Loja diária e alertas de skins para VALORANT" />
+    <meta
+      property="og:description"
+      content="Consulte a loja diária pelo Android, vincule pelo companion Windows e receba alerta quando uma skin da wishlist voltar."
+    />
+    <meta property="og:image" content="https://murillou4.github.io/valcomp/assets/images/site-backdrop-wide.webp" />
+    <meta property="og:image:alt" content="Valcomp companion para loja, wishlist e alertas de skins do VALORANT" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Valcomp | Loja diária e alertas de skins para VALORANT" />
+    <meta
+      name="twitter:description"
+      content="Veja sua loja diária no celular, salve skins na wishlist e receba alerta quando elas voltarem."
+    />
+    <meta name="twitter:image" content="https://murillou4.github.io/valcomp/assets/images/site-backdrop-wide.webp" />
     <meta name="theme-color" content="#090e15" />
+    <link rel="icon" href="./assets/images/logo.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preload" href="./assets/fonts/Asgard-ExtraBold.ttf" as="font" type="font/ttf" crossorigin />
-    <link rel="stylesheet" href="./styles.css?v=20260622-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260622-4" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Valcomp",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Android, Windows",
+        "url": "https://murillou4.github.io/valcomp/",
+        "downloadUrl": "https://murillou4.github.io/valcomp/downloads/valcomp-mobile.apk",
+        "description": "App companion para consultar loja diária do VALORANT, monitorar wishlist e receber alertas de skins.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "BRL"
+        }
+      }
+    </script>
     <script>
       document.documentElement.classList.add("motion-ready");
     </script>
@@ -29,7 +67,7 @@
           <a href="#fluxo">Como funciona</a>
           <a href="#downloads">Downloads</a>
         </nav>
-        <a class="header-cta" href="./downloads/valcomp-mobile.apk?v=1.4.0-18" download="valcomp-mobile.apk">
+        <a class="header-cta" href="./downloads/valcomp-mobile.apk?v=1.4.0-18" download="valcomp-mobile.apk" data-download-link="mobile">
           <span class="cta-full">Baixar Android</span>
           <span class="cta-short">Baixar</span>
         </a>
@@ -50,21 +88,21 @@
                 quando elas voltarem. O companion do Windows cuida do vínculo com a Riot.
               </p>
               <div class="hero-actions" aria-label="Downloads principais">
-                <a class="button button-primary" href="./downloads/valcomp-mobile.apk?v=1.4.0-18" download="valcomp-mobile.apk">
+                <a class="button button-primary" href="./downloads/valcomp-mobile.apk?v=1.4.0-18" download="valcomp-mobile.apk" data-download-link="mobile">
                   Baixar Android
                 </a>
-                <a class="button button-secondary" href="./downloads/valcomp-companion-windows-2.1.0.exe?v=2.1.0" download>
+                <a class="button button-secondary" href="./downloads/valcomp-companion-windows-2.1.0.exe?v=2.1.0" download="valcomp-companion-windows-2.1.0.exe" data-download-link="desktop">
                   Baixar companion
                 </a>
               </div>
               <div class="hero-download-panel" aria-label="Status dos downloads">
                 <div>
                   <span>APK Android</span>
-                  <strong>1.4.0</strong>
+                  <strong data-download-value="mobile.version">1.4.0</strong>
                 </div>
                 <div>
                   <span>Companion Windows</span>
-                  <strong>2.1.0</strong>
+                  <strong data-download-value="desktop.version">2.1.0</strong>
                 </div>
                 <div>
                   <span>Vínculo</span>
@@ -366,21 +404,21 @@
               <dl class="download-meta">
                 <div>
                   <dt>Versão</dt>
-                  <dd>Flutter 1.4.0</dd>
+                  <dd data-download-value="mobile.versionLabel">App 1.4.0</dd>
                 </div>
                 <div>
                   <dt>Tamanho</dt>
-                  <dd>64.9 MB</dd>
+                  <dd data-download-value="mobile.size">64.9 MB</dd>
                 </div>
                 <div>
                   <dt>Arquivo</dt>
-                  <dd><code>valcomp-mobile.apk</code></dd>
+                  <dd><code data-download-value="mobile.file">valcomp-mobile.apk</code></dd>
                 </div>
               </dl>
-              <a class="button button-primary" href="./downloads/valcomp-mobile.apk?v=1.4.0-18" download="valcomp-mobile.apk">Baixar Android</a>
+              <a class="button button-primary" href="./downloads/valcomp-mobile.apk?v=1.4.0-18" download="valcomp-mobile.apk" data-download-link="mobile">Baixar Android</a>
               <details>
                 <summary>Ver SHA-256</summary>
-                <code>8AD49BF346209184B269735EDC173AADBFA0C7A46B08B49550E1D651A5F67ED0</code>
+                <code data-download-value="mobile.sha256">8AD49BF346209184B269735EDC173AADBFA0C7A46B08B49550E1D651A5F67ED0</code>
               </details>
             </article>
 
@@ -394,23 +432,23 @@
               <dl class="download-meta">
                 <div>
                   <dt>Versão</dt>
-                  <dd>Electron 2.1.0</dd>
+                  <dd data-download-value="desktop.versionLabel">Companion 2.1.0</dd>
                 </div>
                 <div>
                   <dt>Tamanho</dt>
-                  <dd>93.2 MB</dd>
+                  <dd data-download-value="desktop.size">93.2 MB</dd>
                 </div>
                 <div>
                   <dt>Arquivo</dt>
-                  <dd><code>valcomp-companion-windows-2.1.0.exe</code></dd>
+                  <dd><code data-download-value="desktop.file">valcomp-companion-windows-2.1.0.exe</code></dd>
                 </div>
               </dl>
-              <a class="button button-secondary" href="./downloads/valcomp-companion-windows-2.1.0.exe?v=2.1.0" download>
+              <a class="button button-secondary" href="./downloads/valcomp-companion-windows-2.1.0.exe?v=2.1.0" download="valcomp-companion-windows-2.1.0.exe" data-download-link="desktop">
                 Baixar companion
               </a>
               <details>
                 <summary>Ver SHA-256</summary>
-                <code>7C3E95635C06768043E2C28C2B0111870C0EB588B1B4688996C9092A90B7DF11</code>
+                <code data-download-value="desktop.sha256">7C3E95635C06768043E2C28C2B0111870C0EB588B1B4688996C9092A90B7DF11</code>
               </details>
             </article>
           </div>
@@ -425,8 +463,8 @@
             </p>
           </div>
           <div class="final-actions" data-reveal>
-            <a class="button button-primary" href="./downloads/valcomp-mobile.apk?v=1.4.0-18" download="valcomp-mobile.apk">Baixar Android</a>
-            <a class="button button-secondary" href="./downloads/valcomp-companion-windows-2.1.0.exe?v=2.1.0" download>Baixar companion</a>
+            <a class="button button-primary" href="./downloads/valcomp-mobile.apk?v=1.4.0-18" download="valcomp-mobile.apk" data-download-link="mobile">Baixar Android</a>
+            <a class="button button-secondary" href="./downloads/valcomp-companion-windows-2.1.0.exe?v=2.1.0" download="valcomp-companion-windows-2.1.0.exe" data-download-link="desktop">Baixar companion</a>
           </div>
         </section>
 
